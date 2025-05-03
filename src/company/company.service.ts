@@ -70,10 +70,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Company } from './company.schema';
 import { CreateCompanyDto } from './dto/create-company.dto';
+import { Branch } from 'src/branch/branch.schema';
 
 @Injectable()
 export class CompanyService {
-  constructor(@InjectModel(Company.name) private companyModel: Model<Company>) {}
+  constructor(@InjectModel(Company.name) private companyModel: Model<Company>,@InjectModel(Branch.name) private BranchModel: Model<Branch>) {}
 
   async createCompany(createCompanyDto: CreateCompanyDto): Promise<Company> {
     const createdCompany = new this.companyModel({ ...createCompanyDto, branches: [] });
@@ -85,8 +86,9 @@ export class CompanyService {
   }
 
   async getBranchesByCompanyId(companyId: string) {
-    const company = await this.companyModel.findById(companyId);
-    return company?.branches || [];
+
+    const company:any = await this.BranchModel.find({companyId});
+    return company || [];
   }
 
   async updateCompany(companyId: string, updateCompanyDto: CreateCompanyDto) {

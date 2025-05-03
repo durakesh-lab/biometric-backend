@@ -25,5 +25,6 @@ import { Branch, BranchSchema } from './branch.schema';
   ],
   controllers: [BranchController],
   providers: [BranchService],
+  exports:[]
 })
 export class BranchModule {}
