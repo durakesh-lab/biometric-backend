@@ -12,7 +12,7 @@ import { DepartmentModule } from './department/department.module';
     MongooseModule.forRoot('mongodb+srv://paromita:GVoSVcDR2FiRliVO@cluster0.rrnavjn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'),
     AuthModule,
     UserModule,
-    CompanyModule, // Only one import of CompanyModule
+    CompanyModule, 
     MicroserviceModule,
     BranchModule,
     DepartmentModule,

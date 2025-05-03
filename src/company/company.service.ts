@@ -65,9 +65,44 @@
 // }
 
 // company.service.ts
+
+// import { Injectable } from '@nestjs/common';
+// import { InjectModel } from '@nestjs/mongoose';
+// import { Model } from 'mongoose';
+// import { Company } from './company.schema';
+// import { CreateCompanyDto } from './dto/create-company.dto';
+
+// @Injectable()
+// export class CompanyService {
+//   constructor(@InjectModel(Company.name) private companyModel: Model<Company>) {}
+
+//   async createCompany(createCompanyDto: CreateCompanyDto): Promise<Company> {
+//     const createdCompany = new this.companyModel({ ...createCompanyDto, branches: [] });
+//     return createdCompany.save();
+//   }
+
+//   async getAllCompanies(): Promise<Company[]> {
+//     return this.companyModel.find().exec();
+//   }
+
+//   async getBranchesByCompanyId(companyId: string) {
+//     const company = await this.companyModel.findById(companyId);
+//     return company?.branches || [];
+//   }
+
+//   async updateCompany(companyId: string, updateCompanyDto: CreateCompanyDto) {
+//     return this.companyModel.findByIdAndUpdate(companyId, updateCompanyDto, { new: true });
+//   }
+
+//   async deleteCompany(companyId: string) {
+//     await this.companyModel.findByIdAndDelete(companyId);
+//     return { message: 'Company deleted successfully' };
+//   }
+// }
+
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Company } from './company.schema';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { Branch } from 'src/branch/branch.schema';
@@ -77,12 +112,13 @@ export class CompanyService {
   constructor(@InjectModel(Company.name) private companyModel: Model<Company>,@InjectModel(Branch.name) private BranchModel: Model<Branch>) {}
 
   async createCompany(createCompanyDto: CreateCompanyDto): Promise<Company> {
+    // Create a new company and initialize branches as an empty array
     const createdCompany = new this.companyModel({ ...createCompanyDto, branches: [] });
     return createdCompany.save();
   }
 
   async getAllCompanies(): Promise<Company[]> {
-    return this.companyModel.find().exec();
+    return this.companyModel.find().populate('branches').exec();  // Ensure branches are populated
   }
 
   async getBranchesByCompanyId(companyId: string) {
