@@ -136,6 +136,11 @@ export class BranchService {
     return branch.save();
   }
 
+  async getBranchById(branchId: string): Promise<Branch | null> {
+    return this.branchModel.findById(branchId);
+  }
+  
+
   async getDepartmentsByBranchId(branchId: string) {
     const branch = await this.branchModel.findById(branchId);
     return branch?.departments || [];

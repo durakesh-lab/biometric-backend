@@ -1,18 +1,18 @@
+
 // import { Injectable } from '@nestjs/common';
 // import { JwtService } from '@nestjs/jwt';
-// import { LoginDto } from './login.dto';
-// import { UserService } from '../user/user.service';  // Import UserService to create users
+// import { UserService } from '../user/user.service';  // Correct import for UserService
 // import * as bcrypt from 'bcrypt';
-// import { RegisterDto } from './register.dto';  // Register DTO for validation
+// import { LoginDto } from './login.dto';
+// import { RegisterDto } from './register.dto';
 
 // @Injectable()
 // export class AuthService {
 //   constructor(
 //     private readonly jwtService: JwtService,
-//     private readonly userService: UserService,  // Inject UserService for creating users
+//     private readonly userService: UserService,  // Correct injection of UserService
 //   ) {}
 
-//   // Validate user credentials
 //   async validateUser(username: string, password: string): Promise<any> {
 //     const user = await this.userService.findOne(username);
 //     if (user && bcrypt.compareSync(password, user.password)) {
@@ -21,38 +21,32 @@
 //     return null;
 //   }
 
-//   // Generate and return a JWT token after successful login
 //   async login(user: any) {
-//     const payload = { username: user.username, sub: user._id };
+//     const payload = { username: user.username, sub: user._id, role: user.role };
 //     return {
 //       access_token: this.jwtService.sign(payload),
 //     };
 //   }
 
-//   // Register a new user (hash password and store user in DB)
 //   async register(registerDto: RegisterDto): Promise<any> {
-//     const { username, password } = registerDto;
+//     const { username, password, role } = registerDto;
 
-//     // Check if the username already exists
 //     const existingUser = await this.userService.findOne(username);
 //     if (existingUser) {
 //       throw new Error('Username already exists');
 //     }
 
-//     // Hash the password before saving
 //     const hashedPassword = bcrypt.hashSync(password, 10);
 
-//     // Create the new user
 //     const newUser = await this.userService.createUser({
 //       username,
 //       password: hashedPassword,
+//       role,  // Include role in user creation
 //     });
 
-//     // Optionally, return the newly created user, or you could return a JWT token
 //     return newUser;
 //   }
 
-//   // Authenticate the login credentials
 //   async authenticate(loginDto: LoginDto) {
 //     const user = await this.validateUser(loginDto.username, loginDto.password);
 //     if (!user) {
@@ -61,9 +55,10 @@
 //     return this.login(user);
 //   }
 // }
-import { Injectable } from '@nestjs/common';
+
+import { Injectable, ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserService } from '../user/user.service';  // Correct import for UserService
+import { UserService } from '../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './login.dto';
 import { RegisterDto } from './register.dto';
@@ -72,15 +67,15 @@ import { RegisterDto } from './register.dto';
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
-    private readonly userService: UserService,  // Correct injection of UserService
+    private readonly userService: UserService,
   ) {}
 
   async validateUser(username: string, password: string): Promise<any> {
     const user = await this.userService.findOne(username);
-    if (user && bcrypt.compareSync(password, user.password)) {
-      return user;
-    }
-    return null;
+    if (!user) return null;
+
+    const isPasswordValid = bcrypt.compareSync(password, user.password);
+    return isPasswordValid ? user : null;
   }
 
   async login(user: any) {
@@ -91,19 +86,29 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto): Promise<any> {
-    const { username, password, role } = registerDto;
+    const { username, password, email, role } = registerDto;
+
+    if (!username || !password || !email || !role) {
+      throw new BadRequestException('All fields (username, email, password, role) are required');
+    }
 
     const existingUser = await this.userService.findOne(username);
     if (existingUser) {
-      throw new Error('Username already exists');
+      throw new ConflictException('Username already exists');
+    }
+
+    const existingEmail = await this.userService.findByEmail(email);
+    if (existingEmail) {
+      throw new ConflictException('Email already exists');
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
 
     const newUser = await this.userService.createUser({
       username,
+      email,
       password: hashedPassword,
-      role,  // Include role in user creation
+      role,
     });
 
     return newUser;
@@ -112,7 +117,7 @@ export class AuthService {
   async authenticate(loginDto: LoginDto) {
     const user = await this.validateUser(loginDto.username, loginDto.password);
     if (!user) {
-      throw new Error('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials');
     }
     return this.login(user);
   }

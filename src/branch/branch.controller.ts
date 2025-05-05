@@ -99,6 +99,13 @@ import { CreateBranchDto } from './dto/create-branch.dto';
 export class BranchController {
   constructor(private readonly branchService: BranchService) {}
 
+
+  @Get(':branchId')
+getBranchById(@Param('branchId') branchId: string) {
+  return this.branchService.getBranchById(branchId);
+}
+
+
   @Get(':branchId/departments')
   getDepartments(@Param('branchId') branchId: string) {
     return this.branchService.getDepartmentsByBranchId(branchId);
