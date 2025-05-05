@@ -47,36 +47,48 @@ import { CreateDepartmentDto } from './dto/create-department.dto';
 
 @Injectable()
 export class DepartmentService {
-  constructor(
-    @InjectModel(Department.name) private departmentModel: Model<Department>,  // Inject the Department model
-  ) {}
+  constructor(@InjectModel(Department.name) private deptModel: Model<Department>) {}
+  private departments = [
+    { id: 1, name: 'Department 1', branchId: 1 },
+    { id: 2, name: 'Department 2', branchId: 1 },
+    { id: 3, name: 'Department 3', branchId: 2 },
+  ];
 
-  // Get all departments by branchId
-  async getDepartmentsByBranchId(branchId: string) {
-    return this.departmentModel.find({ branchId }).exec();  // Fetch departments for the given branchId
+  getDepartmentsByBranchId(branchId: string) {
+    // return this.departments.filter(department => department.branchId === branchId);
+    return this.deptModel.find({branchId})
   }
 
-  // Create a new department
-  async createDepartment(createDepartmentDto: CreateDepartmentDto) {
-    const newDepartment = new this.departmentModel(createDepartmentDto);
-    return newDepartment.save();  // Save the new department in the database
+  createDepartment(createDepartmentDto: CreateDepartmentDto) {
+         let dept_data=new this.deptModel({...createDepartmentDto})
+         return dept_data.save()
+    // const newDepartment = { id: Date.now(), ...createDepartmentDto };
+    // this.departments.push(newDepartment);
+    // return newDepartment;
   }
 
-  // Update an existing department
   async updateDepartment(departmentId: string, updateDepartmentDto: CreateDepartmentDto) {
-    const updatedDepartment = await this.departmentModel.findByIdAndUpdate(departmentId, updateDepartmentDto, { new: true });
-    if (!updatedDepartment) {
-      return { message: 'Department not found' };
-    }
-    return updatedDepartment;  // Return the updated department
+    // const department = this.departments.find(d => d.id === departmentId);
+    // if (department) {
+    //   Object.assign(department, updateDepartmentDto);
+    //   return department;
+    // }
+    // return null;
+
+           return this.deptModel.findByIdAndUpdate(departmentId, updateDepartmentDto, { new: true });
   }
 
-  // Delete a department by its ID
   async deleteDepartment(departmentId: string) {
-    const department = await this.departmentModel.findByIdAndDelete(departmentId);
-    if (department) {
-      return { message: 'Department deleted successfully' };
-    }
-    return { message: 'Department not found' };
+    // const index = this.departments.findIndex(d => d.id === departmentId);
+    // if (index > -1) {
+    //   this.departments.splice(index, 1);
+    //   return { message: 'Department deleted successfully' };
+    // }
+    // return { message: 'Department not found' };
+
+
+    const result = await this.deptModel.findByIdAndDelete(departmentId);
+    if (result) return { message: 'Dept deleted successfully' };
+    return { message: 'Dept not found' };
   }
 }

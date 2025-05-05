@@ -13,13 +13,11 @@
 import { Module } from '@nestjs/common';
 import { DepartmentController } from './department.controller';
 import { DepartmentService } from './department.service';
-import { MongooseModule } from '@nestjs/mongoose';
 import { Department, DepartmentSchema } from './department.schema';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([{ name: Department.name, schema: DepartmentSchema }])  // Register Department schema
-  ],
+  imports:[MongooseModule.forFeature([{ name: Department.name, schema: DepartmentSchema }])],
   controllers: [DepartmentController],
   providers: [DepartmentService],
   exports: [DepartmentService],  // Export service so other modules can use it
