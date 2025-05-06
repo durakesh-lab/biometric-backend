@@ -1,22 +1,23 @@
-// import { Controller, Post, Body } from '@nestjs/common';
+
+
+// import { Controller, Get, Param } from '@nestjs/common';
 // import { UserService } from './user.service';
 
 // @Controller('users')
 // export class UserController {
-//   constructor(private userService: UserService) {}
+//   constructor(private readonly userService: UserService) {}
 
-//   @Post()
-//   async create(@Body() userDto: any) {
-//     return this.userService.createUser(userDto);
+//   @Get(':username')
+//   async getUser(@Param('username') username: string) {
+//     return this.userService.findOne(username);
 //   }
-
-//   // Additional routes for managing users
 // }
 
 // user.controller.ts
 
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { UserService } from './user.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('users')
 export class UserController {
@@ -26,9 +27,14 @@ export class UserController {
   async getUser(@Param('username') username: string) {
     return this.userService.findOne(username);
   }
+  @Post('edituser/:id')
+  async editUser(@Body() body: any,@Param() id:any) {
+    return this.userService.editeUser(body);
+  }
   @Post('allusers')
-  async geAllUsers(@Body() body: any) {
+  async geAllUsers(@Body() body: any,@Query() query:any) {
     let {branchId,companyId} =body
-    return this.userService.getAllUsers(branchId,companyId);
+    // let deptId=query.deptId
+    return this.userService.getAllUsers(branchId,companyId,query);
   }
 }

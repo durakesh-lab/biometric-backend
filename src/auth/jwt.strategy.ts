@@ -1,9 +1,10 @@
+
 // import { Injectable } from '@nestjs/common';
 // import { PassportStrategy } from '@nestjs/passport';
 // import { Strategy } from 'passport-jwt';
 // import { ExtractJwt } from 'passport-jwt';
-// import { JwtPayload } from './jwt.payload';  // Ensure this import is correct
- 
+// import { JwtPayload } from './jwt.payload';  // Correct import of JwtPayload
+
 // @Injectable()
 // export class JwtStrategy extends PassportStrategy(Strategy) {
 //   constructor() {
@@ -15,7 +16,7 @@
 //   }
 
 //   async validate(payload: JwtPayload) {
-//     return { userId: payload.sub, username: payload.username };  // Correctly map the payload to the return object
+//     return { userId: payload.sub, username: payload.username, role: payload.role };  // Include role in validated data
 //   }
 // }
 
@@ -23,7 +24,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-jwt';
 import { ExtractJwt } from 'passport-jwt';
-import { JwtPayload } from './jwt.payload';  // Correct import of JwtPayload
+import { JwtPayload } from './jwt.payload';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -36,6 +37,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    return { userId: payload.sub, username: payload.username, role: payload.role };  // Include role in validated data
+    return { userId: payload.sub, username: payload.username, role: payload.role };
   }
 }
