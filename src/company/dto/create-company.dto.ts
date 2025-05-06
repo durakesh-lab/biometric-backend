@@ -1,7 +1,4 @@
-// export class CreateCompanyDto {
-//     name: string;
-//   }
-  
+
 import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateCompanyDto {
