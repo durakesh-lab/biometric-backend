@@ -62,6 +62,7 @@ import { UserService } from '../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './login.dto';
 import { RegisterDto } from './register.dto';
+import { Department } from 'src/department/department.schema';
 
 @Injectable()
 export class AuthService {
@@ -72,10 +73,17 @@ export class AuthService {
 
   async validateUser(username: string, password: string): Promise<any> {
     const user = await this.userService.findOne(username);
-    if (!user) return null;
-
-    const isPasswordValid = bcrypt.compareSync(password, user.password);
-    return isPasswordValid ? user : null;
+    if(user?.active_status=="Inactive"){
+      throw new UnauthorizedException('User is inactive');
+      // return {
+      //   statusCode: 401,
+      //   message: 'User is inactive',
+      // };
+    }
+    if (user && bcrypt.compareSync(password, user.password)) {
+      return user;
+    }
+    return null;
   }
 
   async login(user: any) {
@@ -85,30 +93,43 @@ export class AuthService {
     };
   }
 
-  async register(registerDto: RegisterDto): Promise<any> {
-    const { username, password, email, role } = registerDto;
-
-    if (!username || !password || !email || !role) {
-      throw new BadRequestException('All fields (username, email, password, role) are required');
-    }
+  async register(registerDto: any): Promise<any> {
+    const { username, password, role,   firstName,
+      active_status,
+      email,
+      lastName,
+      joining_date,
+      date_of_birth,
+      branchId,
+      department,
+      companyId} = registerDto;
 
     const existingUser = await this.userService.findOne(username);
     if (existingUser) {
       throw new ConflictException('Username already exists');
     }
 
-    const existingEmail = await this.userService.findByEmail(email);
-    if (existingEmail) {
-      throw new ConflictException('Email already exists');
-    }
+    // const existingEmail = await this.userService.findByEmail(email);
+    // if (existingEmail) {
+    //   throw new ConflictException('Email already exists');
+    // }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
 
     const newUser = await this.userService.createUser({
       username,
-      email,
+   
       password: hashedPassword,
-      role,
+      role,  // Include role in user creation
+      firstName,
+      active_status,
+      email,
+      lastName,
+      joining_date,
+      date_of_birth,
+      branchId,
+      companyId,
+      deptId:department
     });
 
     return newUser;
@@ -119,6 +140,9 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
+    // if (user.statusCode==401){
+    //   return user
+    // }
     return this.login(user);
   }
 }

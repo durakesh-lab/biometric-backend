@@ -12,7 +12,10 @@
 //     return this.userService.findOne(username);
 //   }
 // }
-import { Controller, Get, Param, UseGuards, Req, ForbiddenException } from '@nestjs/common';
+
+// user.controller.ts
+
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -24,17 +27,14 @@ export class UserController {
   async getUser(@Param('username') username: string) {
     return this.userService.findOne(username);
   }
-
-  // ✅ Super Admin only
-  @UseGuards(JwtAuthGuard)
-  @Get()
-  async getAllUsers(@Req() req: any) {
-    const user = req.user;
-
-    if (user.role !== 'Super Admin') {
-      throw new ForbiddenException('Only Super Admins can access all users');
-    }
-
-    return this.userService.findAllUsers();
+  @Post('edituser/:id')
+  async editUser(@Body() body: any,@Param() id:any) {
+    return this.userService.editeUser(body);
+  }
+  @Post('allusers')
+  async geAllUsers(@Body() body: any,@Query() query:any) {
+    let {branchId,companyId} =body
+    // let deptId=query.deptId
+    return this.userService.getAllUsers(branchId,companyId,query);
   }
 }

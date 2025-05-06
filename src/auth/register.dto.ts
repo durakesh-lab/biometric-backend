@@ -15,12 +15,14 @@ export class RegisterDto {
   @IsNotEmpty()
   @IsString()
   password: string;
-
-  @IsNotEmpty()
-  @IsEmail()
-  email: string;
-
-  @IsNotEmpty()
-  @IsIn(['Super Admin', 'HR Admin', 'Manager', 'Employee', 'Guest'])
-  role: string;
+  role: 'Super Admin' | 'HR Admin' | 'Manager' | 'Employee' | 'Guest';  // Add role field,
+  active_status:"Active" | "Inactive";
+  email:string;
+  firstName: string;
+  lastName: string;
+  joining_date: string;
+  date_of_birth:string;
+  branchId:string;
+  companyId:string;
+  department:string
 }
