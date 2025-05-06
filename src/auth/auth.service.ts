@@ -61,7 +61,7 @@
 //     return this.login(user);
 //   }
 // }
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';  // Correct import for UserService
 import * as bcrypt from 'bcrypt';
@@ -77,6 +77,13 @@ export class AuthService {
 
   async validateUser(username: string, password: string): Promise<any> {
     const user = await this.userService.findOne(username);
+    if(user?.active_status=="Inactive"){
+      throw new UnauthorizedException('User is inactive');
+      // return {
+      //   statusCode: 401,
+      //   message: 'User is inactive',
+      // };
+    }
     if (user && bcrypt.compareSync(password, user.password)) {
       return user;
     }
@@ -90,8 +97,15 @@ export class AuthService {
     };
   }
 
-  async register(registerDto: RegisterDto): Promise<any> {
-    const { username, password, role } = registerDto;
+  async register(registerDto: any): Promise<any> {
+    const { username, password, role,   firstName,
+      active_status,
+      email,
+      lastName,
+      joining_date,
+      date_of_birth,
+      branchId,
+      companyId} = registerDto;
 
     const existingUser = await this.userService.findOne(username);
     if (existingUser) {
@@ -104,6 +118,14 @@ export class AuthService {
       username,
       password: hashedPassword,
       role,  // Include role in user creation
+      firstName,
+      active_status,
+      email,
+      lastName,
+      joining_date,
+      date_of_birth,
+      branchId,
+      companyId
     });
 
     return newUser;
@@ -114,6 +136,9 @@ export class AuthService {
     if (!user) {
       throw new Error('Invalid credentials');
     }
+    // if (user.statusCode==401){
+    //   return user
+    // }
     return this.login(user);
   }
 }

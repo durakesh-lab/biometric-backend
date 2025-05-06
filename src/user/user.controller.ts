@@ -15,7 +15,7 @@
 
 // user.controller.ts
 
-import { Controller, Get, Param } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { UserService } from './user.service';
 
 @Controller('users')
@@ -25,5 +25,10 @@ export class UserController {
   @Get(':username')
   async getUser(@Param('username') username: string) {
     return this.userService.findOne(username);
+  }
+  @Post('allusers')
+  async geAllUsers(@Body() body: any) {
+    let {branchId,companyId} =body
+    return this.userService.getAllUsers(branchId,companyId);
   }
 }

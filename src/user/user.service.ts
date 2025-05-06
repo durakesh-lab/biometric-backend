@@ -57,4 +57,7 @@ export class UserService {
   async findOne(username: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ username });
   }
+  async getAllUsers(branchId:string,companyId:string): Promise<any> {
+    return this.userModel.find({ branchId,companyId });
+  }
 }
