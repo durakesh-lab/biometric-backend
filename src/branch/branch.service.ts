@@ -119,7 +119,43 @@
 // }
 
 
-// src/branch/branch.service.ts
+// // src/branch/branch.service.ts
+
+// import { Injectable } from '@nestjs/common';
+// import { InjectModel } from '@nestjs/mongoose';
+// import { Model } from 'mongoose';
+// import { Branch } from './branch.schema';
+// import { CreateBranchDto } from './dto/create-branch.dto';
+
+// @Injectable()
+// export class BranchService {
+//   constructor(@InjectModel(Branch.name) private branchModel: Model<Branch>) {}
+
+//   async createBranch(createBranchDto: CreateBranchDto): Promise<Branch> {
+//     const branch = new this.branchModel({ ...createBranchDto, departments: [] });
+//     return branch.save();
+//   }
+
+//   async getBranchById(branchId: string): Promise<Branch | null> {
+//     return this.branchModel.findById(branchId);
+//   }
+  
+
+//   async getDepartmentsByBranchId(branchId: string) {
+//     const branch = await this.branchModel.findById(branchId);
+//     return branch?.departments || [];
+//   }
+
+//   async updateBranch(branchId: string, updateBranchDto: CreateBranchDto) {
+//     return this.branchModel.findByIdAndUpdate(branchId, updateBranchDto, { new: true });
+//   }
+
+//   async deleteBranch(branchId: string) {
+//     const result = await this.branchModel.findByIdAndDelete(branchId);
+//     if (result) return { message: 'Branch deleted successfully' };
+//     return { message: 'Branch not found' };
+//   }
+// }
 
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -139,7 +175,6 @@ export class BranchService {
   async getBranchById(branchId: string): Promise<Branch | null> {
     return this.branchModel.findById(branchId);
   }
-  
 
   async getDepartmentsByBranchId(branchId: string) {
     const branch = await this.branchModel.findById(branchId);
@@ -154,5 +189,33 @@ export class BranchService {
     const result = await this.branchModel.findByIdAndDelete(branchId);
     if (result) return { message: 'Branch deleted successfully' };
     return { message: 'Branch not found' };
+  }
+
+  // Sorting and searching branches
+  async getBranches(query: any): Promise<Branch[]> {
+    const { name, sortBy, sortOrder, page = 1, limit = 10 } = query;
+
+    // Build search filter
+    const searchFilter: any = {};
+    if (name) {
+      searchFilter.name = { $regex: name, $options: 'i' }; // Case-insensitive search
+    }
+
+    // Build sorting options
+    const sortOptions: any = {};
+    if (sortBy && sortOrder) {
+      sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    } else {
+      sortOptions.name = 1; // Default sort by name ascending
+    }
+
+    // Pagination
+    const skip = (page - 1) * limit;
+
+    return this.branchModel
+      .find(searchFilter)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(limit);
   }
 }
