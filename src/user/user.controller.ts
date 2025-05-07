@@ -31,6 +31,10 @@ export class UserController {
   async editUser(@Body() body: any,@Param() id:any) {
     return this.userService.editeUser(body);
   }
+  @Get('deleteUser/:id')
+  async deleteUser(@Body() body: any,@Param() id:any) {
+    return this.userService.deleteUser(id.id);
+  }
   @Post('allusers')
   async geAllUsers(@Body() body: any,@Query() query:any) {
     let {branchId,companyId} =body

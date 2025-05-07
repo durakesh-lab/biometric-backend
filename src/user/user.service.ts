@@ -53,12 +53,23 @@ export class UserService {
     const newUser = new this.userModel(userDto);
     return newUser.save();
   }
+  async deleteUser(id: any): Promise<any> {
+    // const newUser = new this.userModel(userDto);
+    // return newUser.save();
+
+    const user = await this.userModel.findOne({ _id: id });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    // return await {}
+    return await user.deleteOne();
+  }
   async editeUser(Body: any): Promise<any> {
     const existingUser =await  this.userModel.findOne({_id:Body.id});
     if (!existingUser) {
       throw new Error('User not found');
     }
-  
+    Body.deptId=Body.department
     existingUser.set(Body); // Merge fields safely
     return await existingUser.save();
     // return newUser.save()
@@ -69,7 +80,7 @@ export class UserService {
   }
 
   async getAllUsers(branchId: string, companyId: string, query: any): Promise<any> {
-    const matchStage: any = { branchId, companyId };
+    const matchStage: any = { branchId, companyId, role: { $ne: 'Super Admin' } };
   //  console.log(query.role,"query.department")
     if (query.department) {
       matchStage.deptId = query.department
@@ -109,7 +120,7 @@ export class UserService {
             lastName:1,
             active_status:1,
             role:1,
-            date_of_joining:1,
+            joining_date:1,
             date_of_birth:1,
             // add any user fields you need here
             dept_code: '$departmentInfo.dept_code',
