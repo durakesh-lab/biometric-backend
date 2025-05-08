@@ -8,6 +8,10 @@ export class CreateCompanyDto {
 
   @IsNotEmpty()
   @IsString()
+  companyId: string;
+
+  @IsNotEmpty()
+  @IsString()
   owner: string;
 
   @IsNotEmpty()

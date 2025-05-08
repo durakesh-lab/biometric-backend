@@ -16,13 +16,9 @@ export class CompanyController {
   // }
 
   @Get()
-getAllCompanies(
-  @Query('search') search?: string,
-  @Query('sortBy') sortBy: string = 'name',
-  @Query('order') order: 'asc' | 'desc' = 'asc',
-) {
-  return this.companyService.getAllCompanies(search, sortBy, order);
-}
+  async getAllCompanies(@Query() query: any) {
+    return this.companyService.getAllCompanies(query);
+  }
 
   @Get(':companyId/branches')
   getBranches(@Param('companyId') companyId: string) {
@@ -33,6 +29,7 @@ getAllCompanies(
 
   @Post()
   createCompany(@Body() createCompanyDto: CreateCompanyDto) {
+    console.log(createCompanyDto,"createCompanyDtocreateCompanyDto")
     return this.companyService.createCompany(createCompanyDto);
   }
 
