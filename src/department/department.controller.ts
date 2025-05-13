@@ -28,7 +28,7 @@
 // }
 
 
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Query } from '@nestjs/common';
 import { DepartmentService } from './department.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 
@@ -38,8 +38,11 @@ export class DepartmentController {
 
   // Get all departments for a given branch
   @Get(':branchId')
-  async getDepartmentsByBranch(@Param('branchId') branchId: string) {
-    return this.departmentService.getDepartmentsByBranchId(branchId);  // Fetch departments by branchId
+  async getDepartmentsByBranch(
+    @Param('branchId') branchId: string,
+    @Query() query: any
+  ) {
+    return this.departmentService.getDepartmentsByBranchId(branchId, query);
   }
 
   // Create a new department

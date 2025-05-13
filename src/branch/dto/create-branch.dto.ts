@@ -9,7 +9,10 @@ export class CreateBranchDto {
   @IsNotEmpty()
   @IsString()
   name: string;
-
+  
+  @IsNotEmpty()
+  @IsString()
+  branchCode: string;
   @IsNotEmpty()
   @IsString()
   manager: string;
@@ -27,6 +30,6 @@ export class CreateBranchDto {
   email: string;
 
   @IsNotEmpty()
-  @IsNumber()
-  companyId: number; // Company the branch belongs to
+  @IsString()
+  companyId: string; // Company the branch belongs to
 }

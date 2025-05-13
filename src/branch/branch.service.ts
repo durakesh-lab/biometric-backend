@@ -157,9 +157,9 @@
 //   }
 // }
 
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Branch } from './branch.schema';
 import { CreateBranchDto } from './dto/create-branch.dto';
 
@@ -190,7 +190,36 @@ export class BranchService {
     if (result) return { message: 'Branch deleted successfully' };
     return { message: 'Branch not found' };
   }
+  async deleteBranches(ids: string[]) {
+    // Convert and validate all IDs
+    const objectIds :any = [];
+    const invalidIds :any = [];
+    
+    for (const id of ids) {
+      if (Types.ObjectId.isValid(id)) {
+        objectIds.push(new Types.ObjectId(id));
+      } else {
+        invalidIds.push(id);
+      }
+    }
 
+    if (invalidIds.length) {
+      throw new BadRequestException(`Invalid branch IDs: ${invalidIds.join(', ')}`);
+    }
+
+    const result = await this.branchModel.deleteMany({
+      _id: { $in: objectIds }
+    });
+
+    if (result.deletedCount === 0) {
+      return { message: 'No branches found to delete' };
+    }
+
+    return {
+      message: `Deleted ${result.deletedCount} branches successfully`,
+      deletedCount: result.deletedCount
+    };
+  }
   // Sorting and searching branches
   async getBranches(query: any): Promise<Branch[]> {
     const { name, sortBy, sortOrder, page = 1, limit = 10 } = query;

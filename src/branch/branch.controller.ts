@@ -166,6 +166,10 @@ export class BranchController {
     return this.branchService.deleteBranch(branchId);
   }
 
+  @Post('delete-bulk')
+deleteBranches(@Body() body: { Ids: string[] }) {
+  return this.branchService.deleteBranches(body.Ids);
+}
   // New route for searching and sorting branches
   @Get()
   getBranches(@Query() query: any) {

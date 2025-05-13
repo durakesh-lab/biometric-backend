@@ -6,7 +6,7 @@ import { Document, Types } from 'mongoose';
 @Schema()
 export class Branch extends Document {
   @Prop({ required: true }) name: string;
-
+  @Prop({ required: true }) branchCode: string;
   @Prop({ required: true }) manager: string;
 
   @Prop({ required: true }) address: string;

@@ -1,11 +1,10 @@
 
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { isValidObjectId, Model, Types } from 'mongoose';
 import { Company } from './company.schema';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { Branch } from 'src/branch/branch.schema';
-
 @Injectable()
 export class CompanyService {
   constructor(@InjectModel(Company.name) private companyModel: Model<Company>,@InjectModel(Branch.name) private BranchModel: Model<Branch>) {}
@@ -86,10 +85,66 @@ async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
 }
   
 
-  async getBranchesByCompanyId(companyId: string) {
-
-    const company:any = await this.BranchModel.find({companyId});
-    return company || [];
+  async getBranchesByCompanyId(  companyId: string,
+    query: any
+  ): Promise<{ data: Branch[]; count: number }> {
+    const {
+      page = 1,
+      page_size = 10,
+      search = '',
+      ordering = '',
+      name = '',
+      manager = '',
+      email = '',
+      phoneNumber = '',
+    } = query;
+  console.log(query,companyId,"companyIdcompanyIdcompanyId########")
+    // Build the filter object
+    const filter: any = { companyId: companyId };
+  
+    // Search across multiple fields if search term is provided
+    if (search) {
+      filter.$or = [
+        { name: new RegExp(search, 'i') },
+        { manager: new RegExp(search, 'i') },
+        { email: new RegExp(search, 'i') },
+        { phoneNumber: new RegExp(search, 'i') },
+        { address: new RegExp(search, 'i') },
+      ];
+    }
+  
+    // Individual field filters
+    if (name) filter.name = new RegExp(name, 'i');
+    if (manager) filter.manager = new RegExp(manager, 'i');
+    if (email) filter.email = new RegExp(email, 'i');
+    if (phoneNumber) filter.phoneNumber = new RegExp(phoneNumber, 'i');
+  
+    // Handle sorting
+    let sort = {};
+    if (ordering) {
+      const sortDirection = ordering.startsWith('-') ? -1 : 1;
+      const sortField = ordering.startsWith('-') ? ordering.substring(1) : ordering;
+      sort = { [sortField]: sortDirection };
+    }
+  
+    // Calculate pagination
+    const skip = (page - 1) * page_size;
+    const limit = parseInt(page_size);
+  
+    // Execute queries
+    const data = await this.BranchModel
+      .find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .exec();
+  
+    const count = await this.BranchModel.countDocuments(filter);
+  
+    return {
+      data,
+      count
+    };
   }
 
   async updateCompany(companyId: string, updateCompanyDto: CreateCompanyDto) {
@@ -100,4 +155,35 @@ async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
     await this.companyModel.findByIdAndDelete(companyId);
     return { message: 'Company deleted successfully' };
   }
+  async deleteCompanies(ids: string[]) {
+    // Convert and validate all IDs
+    const objectIds :any = [];
+    const invalidIds :any = [];
+    
+    for (const id of ids) {
+      if (Types.ObjectId.isValid(id)) {
+        objectIds.push(new Types.ObjectId(id));
+      } else {
+        invalidIds.push(id);
+      }
+    }
+
+    if (invalidIds.length) {
+      throw new BadRequestException(`Invalid company IDs: ${invalidIds.join(', ')}`);
+    }
+
+    const result = await this.companyModel.deleteMany({
+      _id: { $in: objectIds }
+    });
+
+    if (result.deletedCount === 0) {
+      return { message: 'No companies found to delete' };
+    }
+
+    return {
+      message: `Deleted ${result.deletedCount} companies successfully`,
+      deletedCount: result.deletedCount
+    };
+  }
+
 }

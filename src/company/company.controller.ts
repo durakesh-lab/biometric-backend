@@ -21,8 +21,9 @@ export class CompanyController {
   }
 
   @Get(':companyId/branches')
-  getBranches(@Param('companyId') companyId: string) {
-    return this.companyService.getBranchesByCompanyId(companyId);
+  getBranches( @Param('companyId') companyId: string,
+  @Query() query: any) {
+    return this.companyService.getBranchesByCompanyId(companyId,query);
   }
 
   
@@ -45,4 +46,8 @@ export class CompanyController {
   deleteCompany(@Param('companyId') companyId: string) {
     return this.companyService.deleteCompany(companyId);
   }
+  @Post('delete-bulk')
+deleteCompanies(@Body() body: { companyIds: string[] }) {
+  return this.companyService.deleteCompanies(body.companyIds);
+}
 }

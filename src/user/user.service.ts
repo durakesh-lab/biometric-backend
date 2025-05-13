@@ -80,55 +80,120 @@ export class UserService {
   }
 
   async getAllUsers(branchId: string, companyId: string, query: any): Promise<any> {
-    const matchStage: any = { branchId, companyId, role: { $ne: 'Super Admin' } };
-  //  console.log(query.role,"query.department")
-    if (query.department) {
-      matchStage.deptId = query.department
+    // Extract query parameters
+    const {
+        page = 1,
+        page_size = 10,
+        search = '',
+        ordering = '',
+        firstName = '',
+        lastName = '',
+        email = '',
+        role = '',
+        department = '',
+        active_status = ''
+    } = query;
+
+    // Base filter
+    const filter: any = { 
+        branchId, 
+        companyId, 
+        role: { $ne: 'Super Admin' } 
+    };
+
+    // General search across multiple fields
+    if (search) {
+        const searchRegex = new RegExp(search, 'i');
+        filter.$or = [
+            { firstName: searchRegex },
+            { lastName: searchRegex },
+            { email: searchRegex },
+            { role: searchRegex }
+        ];
     }
-    if(query.role){
-      matchStage.role = query.role
+
+    // Individual field filters
+    if (firstName) filter.firstName = new RegExp(firstName, 'i');
+    if (lastName) filter.lastName = new RegExp(lastName, 'i');
+    if (email) filter.email = new RegExp(email, 'i');
+    if (role) filter.role = role; // Exact match for role
+    if (department) filter.deptId = department; // Exact match for department
+    if (active_status) filter.active_status = active_status; // Exact match for status
+
+    // Sorting
+    let sort = {};
+    if (ordering) {
+        const sortDirection = ordering.startsWith('-') ? -1 : 1;
+        const sortField = ordering.startsWith('-') ? ordering.substring(1) : ordering;
+        sort = { [sortField]: sortDirection };
     }
-    
-      return this.userModel.aggregate([
-        { $match: matchStage },
-    
-        // Convert deptId (string) to ObjectId for the join
+
+    // Pagination
+    const skip = (page - 1) * page_size;
+    const limit = parseInt(page_size);
+
+    // Aggregation pipeline for joining with departments
+    const pipeline: any[] = [
+        { $match: filter },
         {
-          $addFields: {
-            deptIdObj: {
-              $toObjectId: '$deptId'
+            $addFields: {
+                deptIdObj: {
+                    $toObjectId: '$deptId'
+                }
             }
-          }
         },
         {
-          $lookup: {
-            from: 'departments',
-            localField: 'deptIdObj',
-            foreignField: '_id',
-            as: 'departmentInfo'
-          }
+            $lookup: {
+                from: 'departments',
+                localField: 'deptIdObj',
+                foreignField: '_id',
+                as: 'departmentInfo'
+            }
         },
         { $unwind: { path: '$departmentInfo', preserveNullAndEmptyArrays: true } },
         {
-          $project: {
-            _id: 1,
-            username: 1,
-            email: 1,
-            branchId: 1,
-            companyId: 1,
-            firstName:1,
-            lastName:1,
-            active_status:1,
-            role:1,
-            joining_date:1,
-            date_of_birth:1,
-            // add any user fields you need here
-            dept_code: '$departmentInfo.dept_code',
-            dept_name: '$departmentInfo.name'
-          }
+            $project: {
+                _id: 1,
+                username: 1,
+                email: 1,
+                branchId: 1,
+                companyId: 1,
+                firstName: 1,
+                lastName: 1,
+                active_status: 1,
+                role: 1,
+                joining_date: 1,
+                date_of_birth: 1,
+                dept_code: '$departmentInfo.dept_code',
+                dept_name: '$departmentInfo.name'
+            }
         }
-      ]);
+    ];
+
+    // Count total documents (before pagination)
+    const countPipeline = [...pipeline];
+    countPipeline.push({ $count: 'total' });
+    const countResult = await this.userModel.aggregate(countPipeline);
+    const total = countResult[0]?.total || 0;
+
+    // Apply sorting and pagination
+    if (Object.keys(sort).length > 0) {
+        pipeline.push({ $sort: sort });
     }
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limit });
+
+    // Execute the query
+    const data = await this.userModel.aggregate(pipeline);
+
+    return {
+        data,
+        count: total,
+        page: parseInt(page),
+        page_size: parseInt(page_size),
+        total_pages: Math.ceil(total / limit)
+    };
+}
   
   
 }
