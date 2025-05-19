@@ -59,10 +59,10 @@ export class UserController {
     return this.userService.importUsers(file.path);
   }
 
-  @Post('edituser/:id')
-  editUser(@Body() body: any, @Param('id') id: string) {
-    return this.userService.editeUser({ ...body, id });
-  }
+  // @Post('edituser/:id')
+  // editUser(@Body() body: any, @Param('id') id: string) {
+  //   return this.userService.editeUser({ ...body, id });
+  // }
 
   @Get('deleteUser/:id')
   deleteUser(@Param('id') id: string) {
