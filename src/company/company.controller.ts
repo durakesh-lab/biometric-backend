@@ -30,8 +30,12 @@ export class CompanyController {
 
   @Post()
   createCompany(@Body() createCompanyDto: CreateCompanyDto) {
-    console.log(createCompanyDto,"createCompanyDtocreateCompanyDto")
     return this.companyService.createCompany(createCompanyDto);
+  }
+  
+  @Post("checkandverifyfields")
+  checkcompanyfields(@Body() createCompanyDto: any) {
+    return this.companyService.checkandverifyfield(createCompanyDto);
   }
 
   @Put(':companyId')

@@ -247,4 +247,23 @@ export class BranchService {
       .skip(skip)
       .limit(limit);
   }
+
+      async checkandverifyfields(body: any) {
+
+    try {
+      if(body.field=="branch_code"){
+          let check=await this.branchModel.find({branchCode:body.branchCode});
+          if(check.length){
+            return {status:false,message:"branch code already Exist"}
+          }
+          else{
+            return {status:true}
+          }
+      }
+     
+
+    } catch (error) {
+      
+    }
+  }
 }

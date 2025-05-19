@@ -24,5 +24,8 @@ export class RegisterDto {
   date_of_birth:string;
   branchId:string;
   companyId:string;
-  department:string
+  department:string;
+  mobile:number;
+  gender:string;
+
 }

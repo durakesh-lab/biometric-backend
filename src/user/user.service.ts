@@ -157,9 +157,9 @@
   
 // }
 // / user.service.ts
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 import { UserDocument } from './user.entity';
 import * as xlsx from 'xlsx';
 import * as bcrypt from 'bcrypt';
@@ -179,16 +179,37 @@ export class UserService {
     return user.deleteOne();
   }
 
-  async editeUser(Body: any): Promise<any> {
-    const existingUser = await this.userModel.findById(Body.id);
+  async editUser(body: any): Promise<any> {
+    const existingUser = await this.userModel.findById(body.id);
     if (!existingUser) throw new Error('User not found');
-    Body.deptId = Body.department;
-    existingUser.set(Body);
+    body.deptId = body.department;
+    existingUser.set(body);
     return existingUser.save();
   }
 
   async findOne(username: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ username });
+  }
+
+  async checkAndVerifyFields(body: any): Promise<{ status: boolean; message?: string }> {
+    try {
+      if (body.field === "username") {
+        const check = await this.userModel.find({ username: body.username });
+        if (check.length) {
+          return { status: false, message: "Username already exists" };
+        }
+        return { status: true };
+      } else if (body.field === "email") {
+        const check = await this.userModel.find({ email: body.email });
+        if (check.length) {
+          return { status: false, message: "Email already exists" };
+        }
+        return { status: true };
+      }
+      return { status: false, message: "Invalid field specified" };
+    } catch (error) {
+      throw new Error('Error verifying fields');
+    }
   }
 
   async findById(id: string): Promise<UserDocument | null> {
@@ -200,9 +221,9 @@ export class UserService {
     const sheet = workbook.SheetNames[0];
     const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheet]);
 
-    const users = data.map((row: any) => ({
+    const users = await Promise.all(data.map(async (row: any) => ({
       username: row.username,
-      password: bcrypt.hashSync(row.password, 10),
+      password: await bcrypt.hash(row.password, 10),
       email: row.email,
       firstName: row.firstName,
       lastName: row.lastName,
@@ -213,7 +234,7 @@ export class UserService {
       deptId: row.department,
       joining_date: row.joining_date,
       date_of_birth: row.date_of_birth,
-    }));
+    })));
 
     return this.userModel.insertMany(users);
   }
@@ -232,22 +253,25 @@ export class UserService {
       active_status = ''
     } = query;
 
-    const filter: any = {
-      branchId,
-      companyId,
-      role: { $ne: 'Super Admin' },
+    // Base filter
+    const filter: any = { 
+      branchId, 
+      companyId, 
+      role: { $ne: 'Super Admin' } 
     };
 
     if (search) {
       const searchRegex = new RegExp(search, 'i');
       filter.$or = [
+        { mobile: Number(search) || null },
         { firstName: searchRegex },
         { lastName: searchRegex },
         { email: searchRegex },
-        { role: searchRegex }
+        { role: searchRegex },
       ];
     }
 
+    // Individual field filters
     if (firstName) filter.firstName = new RegExp(firstName, 'i');
     if (lastName) filter.lastName = new RegExp(lastName, 'i');
     if (email) filter.email = new RegExp(email, 'i');
@@ -255,6 +279,7 @@ export class UserService {
     if (department) filter.deptId = department;
     if (active_status) filter.active_status = active_status;
 
+    // Sorting
     const sort: any = {};
     if (ordering) {
       const sortDirection = ordering.startsWith('-') ? -1 : 1;
@@ -269,7 +294,30 @@ export class UserService {
       { $match: filter },
       {
         $addFields: {
-          deptIdObj: { $toObjectId: '$deptId' }
+          deptIdObj: {
+            $convert: {
+              input: '$deptId',
+              to: 'objectId',
+              onError: null,
+              onNull: null
+            }
+          },
+          branchIdObj: {
+            $convert: {
+              input: '$branchId',
+              to: 'objectId',
+              onError: null,
+              onNull: null
+            }
+          },
+          companyIdObj: {
+            $convert: {
+              input: '$companyId',
+              to: 'objectId',
+              onError: null,
+              onNull: null
+            }
+          }
         }
       },
       {
@@ -281,6 +329,24 @@ export class UserService {
         }
       },
       { $unwind: { path: '$departmentInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'branches',
+          localField: 'branchIdObj',
+          foreignField: '_id',
+          as: 'branchesInfo'
+        }
+      },
+      { $unwind: { path: '$branchesInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'companies',
+          localField: 'companyIdObj',
+          foreignField: '_id',
+          as: 'companiesInfo'
+        }
+      },
+      { $unwind: { path: '$companiesInfo', preserveNullAndEmptyArrays: true } },
       {
         $project: {
           _id: 1,
@@ -294,14 +360,20 @@ export class UserService {
           role: 1,
           joining_date: 1,
           date_of_birth: 1,
+          gender: 1,
+          mobile: 1,
           dept_code: '$departmentInfo.dept_code',
-          dept_name: '$departmentInfo.name'
+          dept_name: '$departmentInfo.name',
+          branchCode: '$branchesInfo.branchCode',
+          company_Id: '$companiesInfo.companyId',
         }
       }
     ];
 
-    const countPipeline = [...pipeline, { $count: 'total' }];
-    const countResult = await this.userModel.aggregate(countPipeline);
+    const countPipeline = [...pipeline];
+    countPipeline.push({ $count: 'total' });
+    
+    const countResult = await this.userModel.aggregate(countPipeline).exec();
     const total = countResult[0]?.total || 0;
 
     if (Object.keys(sort).length > 0) {
@@ -310,7 +382,7 @@ export class UserService {
     pipeline.push({ $skip: skip });
     pipeline.push({ $limit: limit });
 
-    const data = await this.userModel.aggregate(pipeline);
+    const data = await this.userModel.aggregate(pipeline).exec();
 
     return {
       data,
@@ -318,6 +390,36 @@ export class UserService {
       page: parseInt(page),
       page_size: parseInt(page_size),
       total_pages: Math.ceil(total / limit)
+    };
+  }
+  
+  async deleteUsers(ids: string[]): Promise<{ message: string; deletedCount?: number }> {
+    const objectIds: Types.ObjectId[] = [];
+    const invalidIds: string[] = [];
+    
+    for (const id of ids) {
+      if (Types.ObjectId.isValid(id)) {
+        objectIds.push(new Types.ObjectId(id));
+      } else {
+        invalidIds.push(id);
+      }
+    }
+
+    if (invalidIds.length) {
+      throw new BadRequestException(`Invalid user IDs: ${invalidIds.join(', ')}`);
+    }
+
+    const result = await this.userModel.deleteMany({
+      _id: { $in: objectIds }
+    }).exec();
+
+    if (result.deletedCount === 0) {
+      return { message: 'No users found to delete' };
+    }
+
+    return {
+      message: `Deleted ${result.deletedCount} users successfully`,
+      deletedCount: result.deletedCount
     };
   }
 }

@@ -59,10 +59,17 @@ export class DepartmentController {
   ) {
     return this.departmentService.updateDepartment(departmentId, updateDepartmentDto);  // Update department
   }
-
+    @Post('delete-bulk')
+deleteBranches(@Body() body: { Ids: string[] }) {
+  return this.departmentService.deletedepartments(body.Ids);
+}
   // Delete a department
   @Delete(':departmentId')
   async deleteDepartment(@Param('departmentId') departmentId: string) {
     return this.departmentService.deleteDepartment(departmentId);  // Delete department by ID
+  }
+      @Post('checkandverifyfields')
+  async checkandverifyfield(@Body() body: any) {
+    return this.departmentService.checkandverifyfields(body);
   }
 }

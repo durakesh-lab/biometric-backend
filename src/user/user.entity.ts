@@ -64,6 +64,8 @@ export const UserSchema = new Schema({
   branchId: { type: String, required: false },
   companyId: { type: String, required: false },
    deptId:{ type: String, required: false },
+   gender:{ type: String, required: false },
+   mobile:{ type: Number, required: false },
 });
 // Export the Mongoose Document type
 export type UserDocument = User & Document;
