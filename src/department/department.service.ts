@@ -39,9 +39,9 @@
 // }
 
 
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Department } from './department.schema';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 
@@ -143,5 +143,55 @@ async getDepartmentsByBranchId(
     const result = await this.deptModel.findByIdAndDelete(departmentId);
     if (result) return { message: 'Dept deleted successfully' };
     return { message: 'Dept not found' };
+  }
+    async deletedepartments(ids: string[]) {
+      // Convert and validate all IDs
+      const objectIds :any = [];
+      const invalidIds :any = [];
+      
+      for (const id of ids) {
+        if (Types.ObjectId.isValid(id)) {
+          objectIds.push(new Types.ObjectId(id));
+        } else {
+          invalidIds.push(id);
+        }
+      }
+  
+      if (invalidIds.length) {
+        throw new BadRequestException(`Invalid branch IDs: ${invalidIds.join(', ')}`);
+      }
+  
+      const result = await this.deptModel.deleteMany({
+        _id: { $in: objectIds }
+      });
+  
+      if (result.deletedCount === 0) {
+        return { message: 'No branches found to delete' };
+      }
+  
+      return {
+        message: `Deleted ${result.deletedCount} branches successfully`,
+        deletedCount: result.deletedCount
+      };
+    }
+
+
+          async checkandverifyfields(body: any) {
+
+    try {
+      if(body.field=="dept_code"){
+          let check=await this.deptModel.find({dept_code:body.dept_code});
+          if(check.length){
+            return {status:false,message:"dept code already Exist"}
+          }
+          else{
+            return {status:true}
+          }
+      }
+     
+
+    } catch (error) {
+      
+    }
   }
 }

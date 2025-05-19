@@ -160,6 +160,13 @@ export class BranchController {
   ) {
     return this.branchService.updateBranch(branchId, updateBranchDto);
   }
+  
+  @Post('checkandverifyfields')
+  checkandverifyfield(
+    @Body() updateBranchDto: any
+  ) {
+    return this.branchService.checkandverifyfields(updateBranchDto);
+  }
 
   @Delete(':branchId')
   deleteBranch(@Param('branchId') branchId: string) {

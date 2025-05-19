@@ -31,10 +31,19 @@ export class UserController {
   async editUser(@Body() body: any,@Param() id:any) {
     return this.userService.editeUser(body);
   }
+    @Post('checkandverifyfields')
+  async checkandverifyfield(@Body() body: any) {
+    return this.userService.checkandverifyfields(body);
+  }
+  
   @Get('deleteUser/:id')
   async deleteUser(@Body() body: any,@Param() id:any) {
     return this.userService.deleteUser(id.id);
   }
+    @Post('delete-bulk')
+deleteBranches(@Body() body: { Ids: string[] }) {
+  return this.userService.deleteUsers(body.Ids);
+}
   @Post('allusers')
   async geAllUsers(@Body() body: any,@Query() query:any) {
     let {branchId,companyId} =body

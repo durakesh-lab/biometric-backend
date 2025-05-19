@@ -21,8 +21,8 @@ export class CompanyService {
 // company.service.ts
 async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
   const {
-    page = 1,
-    page_size = 10,
+    page,
+    page_size,
     search = '',
     ordering = '',
     companyId = '',
@@ -39,6 +39,8 @@ async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
   // Search across multiple fields if search term is provided
   if (search) {
     filter.$or = [
+      
+        { companyId: new RegExp(search, 'i') },
       { name: new RegExp(search, 'i') },
       { owner: new RegExp(search, 'i') },
       { email: new RegExp(search, 'i') },
@@ -46,7 +48,6 @@ async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
       { industry: new RegExp(search, 'i') },
     ];
   }
-
   // Individual field filters
   if (companyId) filter.companyId = new RegExp(companyId, 'i');
   if (name) filter.name = new RegExp(name, 'i');
@@ -64,17 +65,24 @@ async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
   }
 
   // Calculate pagination
-  const skip = (page - 1) * page_size;
-  const limit = parseInt(page_size);
-
-  // Execute queries
-  const data = await this.companyModel
+  if(page && page_size){
+  var skip = (page - 1) * page_size;
+  var limit = parseInt(page_size);
+    var data = await this.companyModel
     .find(filter)
     .sort(sort)
     .skip(skip)
     .limit(limit)
-    .populate('branches')
     .exec();
+  }
+  else{
+  var data = await this.companyModel
+    .find(filter)
+    .sort(sort)
+    .exec();
+  }
+
+
 
   const count = await this.companyModel.countDocuments(filter);
 
@@ -150,7 +158,32 @@ async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
   async updateCompany(companyId: string, updateCompanyDto: CreateCompanyDto) {
     return this.companyModel.findByIdAndUpdate(companyId, updateCompanyDto, { new: true });
   }
+  async checkandverifyfield(body: any) {
+    try {
+      if(body.field=="companyId"){
+          let check=await this.companyModel.find({companyId:body.companyId});
+          if(check.length){
+            return {status:false,message:"Company Id already Exist"}
+          }
+          else{
+            return {status:true}
+          }
+      }
+      else if(body.field=="company_email"){
+        let check=await this.companyModel.find({email:body.email});
+        if(check.length){
+            return {status:false,message:"Email already Exist"}
+          }
+          else{
+            return {status:true}
+          }
 
+      }
+
+    } catch (error) {
+      
+    }
+  }
   async deleteCompany(companyId: string) {
     await this.companyModel.findByIdAndDelete(companyId);
     return { message: 'Company deleted successfully' };

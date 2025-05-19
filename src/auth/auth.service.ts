@@ -102,7 +102,7 @@ export class AuthService {
       date_of_birth,
       branchId,
       department,
-      companyId} = registerDto;
+      companyId,gender,mobile} = registerDto;
 
     const existingUser = await this.userService.findOne(username);
     if (existingUser) {
@@ -129,7 +129,8 @@ export class AuthService {
       date_of_birth,
       branchId,
       companyId,
-      deptId:department
+      deptId:department,
+      gender,mobile
     });
 
     return newUser;

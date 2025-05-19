@@ -40,9 +40,9 @@
 // }
 
 
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import mongoose, { Model } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 import { UserDocument } from './user.entity';  // Correct import for UserDocument
 
 @Injectable()
@@ -79,6 +79,40 @@ export class UserService {
     return this.userModel.findOne({ username });
   }
 
+    async checkandverifyfields(body: any) {
+
+    try {
+      if(body.field=="username"){
+        // if(body.id){
+        //   let check=await this.userModel.find({username:body.username,_id:body.id});
+        //   if(check.length){
+        //     return {status:true}
+        //   }
+        // }
+
+          let check=await this.userModel.find({username:body.username});
+          if(check.length){
+            return {status:false,message:"username already Exist"}
+          }
+          else{
+            return {status:true}
+          }
+      }
+      else if(body.field=="email"){
+        let check=await this.userModel.find({email:body.email});
+        if(check.length){
+            return {status:false,message:"Email already Exist"}
+          }
+          else{
+            return {status:true}
+          }
+
+      }
+
+    } catch (error) {
+      
+    }
+  }
   async getAllUsers(branchId: string, companyId: string, query: any): Promise<any> {
     // Extract query parameters
     const {
@@ -93,7 +127,6 @@ export class UserService {
         department = '',
         active_status = ''
     } = query;
-
     // Base filter
     const filter: any = { 
         branchId, 
@@ -105,13 +138,15 @@ export class UserService {
     if (search) {
         const searchRegex = new RegExp(search, 'i');
         filter.$or = [
+           { mobile: Number(search) },
+                // {gender: searchRegex },
             { firstName: searchRegex },
             { lastName: searchRegex },
             { email: searchRegex },
-            { role: searchRegex }
+            { role: searchRegex },
+              
         ];
     }
-
     // Individual field filters
     if (firstName) filter.firstName = new RegExp(firstName, 'i');
     if (lastName) filter.lastName = new RegExp(lastName, 'i');
@@ -135,13 +170,18 @@ export class UserService {
     // Aggregation pipeline for joining with departments
     const pipeline: any[] = [
         { $match: filter },
-        {
-            $addFields: {
-                deptIdObj: {
-                    $toObjectId: '$deptId'
-                }
-            }
-        },
+       {
+  $addFields: {
+    deptIdObj: {
+      $convert: {
+        input: '$deptId',
+        to: 'objectId',
+        onError: null,      // Set to null if conversion fails
+        onNull: null        // Set to null if the input is null or missing
+      }
+    }
+  }
+},
         {
             $lookup: {
                 from: 'departments',
@@ -151,6 +191,48 @@ export class UserService {
             }
         },
         { $unwind: { path: '$departmentInfo', preserveNullAndEmptyArrays: true } },
+               {
+  $addFields: {
+    branchIdObj: {
+      $convert: {
+        input: '$branchId',
+        to: 'objectId',
+        onError: null,      // Set to null if conversion fails
+        onNull: null        // Set to null if the input is null or missing
+      }
+    }
+  }
+},
+        {
+            $lookup: {
+                from: 'branches',
+                localField: 'branchIdObj',
+                foreignField: '_id',
+                as: 'branchesInfo'
+            }
+        },
+        { $unwind: { path: '$branchesInfo', preserveNullAndEmptyArrays: true } },
+                       {
+  $addFields: {
+    companyIdObj: {
+      $convert: {
+        input: '$companyId',
+        to: 'objectId',
+        onError: null,      // Set to null if conversion fails
+        onNull: null        // Set to null if the input is null or missing
+      }
+    }
+  }
+},
+        {
+            $lookup: {
+                from: 'companies',
+                localField: 'companyIdObj',
+                foreignField: '_id',
+                as: 'companiesInfo'
+            }
+        },
+        { $unwind: { path: '$companiesInfo', preserveNullAndEmptyArrays: true } },
         {
             $project: {
                 _id: 1,
@@ -162,10 +244,15 @@ export class UserService {
                 lastName: 1,
                 active_status: 1,
                 role: 1,
+                // password:1,
                 joining_date: 1,
                 date_of_birth: 1,
+                 gender:1,mobile:1,
                 dept_code: '$departmentInfo.dept_code',
-                dept_name: '$departmentInfo.name'
+                dept_name: '$departmentInfo.name',
+                branchCode:'$branchesInfo.branchCode',
+                company_Id:'$companiesInfo.companyId',
+                
             }
         }
     ];
@@ -195,5 +282,37 @@ export class UserService {
     };
 }
   
+  async deleteUsers(ids: string[]) {
+    // Convert and validate all IDs
+    const objectIds :any = [];
+    const invalidIds :any = [];
+    
+    for (const id of ids) {
+      if (Types.ObjectId.isValid(id)) {
+        objectIds.push(new Types.ObjectId(id));
+      } else {
+        invalidIds.push(id);
+      }
+    }
+
+    if (invalidIds.length) {
+      throw new BadRequestException(`Invalid branch IDs: ${invalidIds.join(', ')}`);
+    }
+
+    const result = await this.userModel.deleteMany({
+      _id: { $in: objectIds }
+    });
+
+    if (result.deletedCount === 0) {
+      return { message: 'No branches found to delete' };
+    }
+
+    return {
+      message: `Deleted ${result.deletedCount} branches successfully`,
+      deletedCount: result.deletedCount
+    };
+  }
   
 }
+
+
