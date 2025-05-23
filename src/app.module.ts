@@ -9,7 +9,8 @@ import { DepartmentModule } from './department/department.module';
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb://localhost:27017'),
+    // MongooseModule.forRoot('mongodb://localhost:27017'),
+    MongooseModule.forRoot('mongodb+srv://paromita:GVoSVcDR2FiRliVO@cluster0.rrnavjn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'),
     AuthModule,
     UserModule,
     CompanyModule, 

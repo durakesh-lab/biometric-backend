@@ -218,28 +218,60 @@ export class UserService {
     return this.userModel.findById(id);
   }
 
-  async importUsers(filePath: string): Promise<any> {
+async importUsers(filePath: string): Promise<any> {
     const workbook = xlsx.readFile(filePath);
     const sheet = workbook.SheetNames[0];
     const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheet]);
+    
+    // Process all rows and hash passwords
+    const users = await Promise.all(data.map(async (row: any) => {
+        if (row.password && row.username && row.BranchId && row.DepartmentId && row.CompanyId) {
+            return {
+                username: row.username,
+                password: await bcrypt.hash(row.password.toString(), 10),
+                mobile: row.Mobile,
+                gender: row.Gender,
+                email: row.Email,
+                firstName: row["First Name"],
+                lastName: row["Last Name"],
+                role: row.role,
+                active_status: row['active status']=="Inactive" ? "Inactive"  : 'Active',
+                branchId: row["BranchId"],
+                companyId: row["CompanyId"],
+                deptId: row['DepartmentId'],
+                joining_date: row['Date of Joining'],
+                date_of_birth: row['date of birth'],
+            };
+        }
+        return null; // Use null instead of false for better semantics
+    }));
 
-    const users = await Promise.all(data.map(async (row: any) => ({
-      username: row.username,
-      password: await bcrypt.hash(row.password, 10),
-      email: row.email,
-      firstName: row.firstName,
-      lastName: row.lastName,
-      role: row.role,
-      active_status: row.active_status || 'Active',
-      branchId: row.branchId,
-      companyId: row.companyId,
-      deptId: row.department,
-      joining_date: row.joining_date,
-      date_of_birth: row.date_of_birth,
-    })));
+    // Filter out null entries and check for existing users
+    const validUsers = users.filter(user => user !== null);
+    // Check for existing users in parallel
+    const existingChecks = await Promise.all(
+        validUsers.map(async (user) => {
+            const existingUser = await this.userModel.findOne({ 
+                $or: [
+                    { username: user.username },
+                    { email: user.email }
+                ]
+            });
+            return existingUser ? null : user;
+        })
+    );
 
-    return this.userModel.insertMany(users);
+    // Filter out users that already exist
+    const newUsers = existingChecks.filter(user => user !== null);
+    // console.log(newUsers,"validUsersvalidUsersvalidUsers#########")
+  try {
+       return this.userModel.insertMany(newUsers);
+  } catch (error) {
+     return {status:false,message:error.message}
+
   }
+ 
+}
 
   async getAllUsers(branchId: string, companyId: string, query: any): Promise<any> {
     const {

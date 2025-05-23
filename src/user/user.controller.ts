@@ -59,10 +59,10 @@ export class UserController {
     return this.userService.importUsers(file.path);
   }
 
-  // @Post('edituser/:id')
-  // editUser(@Body() body: any, @Param('id') id: string) {
-  //   return this.userService.editeUser({ ...body, id });
-  // }
+  @Post('edituser/:id')
+  editUser(@Body() body: any, @Param('id') id: string) {
+    return this.userService.editUser({ ...body, id });
+  }
 
   @Get('deleteUser/:id')
   deleteUser(@Param('id') id: string) {
@@ -84,4 +84,10 @@ export class UserController {
   getUser(@Param('username') username: string) {
     return this.userService.findOne(username);
   }
+    @Post('checkandverifyfields')
+  checkandverifyfield( @Body() updateBranchDto: any) {
+    return this.userService.checkAndVerifyFields(updateBranchDto);
+  }
 }
+
+
