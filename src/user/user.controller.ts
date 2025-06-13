@@ -63,18 +63,35 @@ export class UserController {
   editUser(@Body() body: any, @Param('id') id: string) {
     return this.userService.editUser({ ...body, id });
   }
-
+    @Post('edituser_assigngroup/:id')
+  assigngroup(@Body() body: any, @Param('id') id: string) {
+    return this.userService.assigngroup({ ...body, id });
+  }
+    @Post('edituser_assigngroup_bulk')
+  assigngroup_bulk(@Body() body: any) {
+    return this.userService.assigngroupbulk(body);
+  }
   @Get('deleteUser/:id')
   deleteUser(@Param('id') id: string) {
     return this.userService.deleteUser(id);
   }
 
-  @Post('allusers')
+
+  
+  @Post('getAllgroupscount')
+  getAllgroupscount(@Body() body: any, @Query() query: any) {
+    const { branchId, companyId } = body;
+    return this.userService.getAllGroupsWithUserCount(branchId, companyId);
+  }  @Post('allusers')
   geAllUsers(@Body() body: any, @Query() query: any) {
     const { branchId, companyId } = body;
-    return this.userService.getAllUsers(branchId, companyId, query);
+    return this.userService.getAllUsers(branchId, companyId, query,body.type,body.groupId);
   }
-
+  @Get('usersbirthday')
+  geAllUsersbirthday(@Body() body: any, @Query() query: any) {
+    const { time } = query;
+    return this.userService.usersbirdthday({filter:time});
+  }
   @Get('getuser/:id')
   getUserById(@Param('id') id: string) {
     return this.userService.findById(id);

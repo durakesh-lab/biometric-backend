@@ -8,8 +8,12 @@ export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
   @Post()
-  create(@Body() dto: CreateGroupDto) {
+  create(@Body() dto: any) {
     return this.groupService.createGroup(dto);
+  }
+    @Post("/edit")
+  edit(@Body() dto: any) {
+    return this.groupService.editGroup(dto._id,dto);
   }
 
   @Post(':groupId/add-members')
@@ -20,6 +24,10 @@ export class GroupController {
   @Get(':groupId')
   getGroup(@Param('groupId') groupId: string) {
     return this.groupService.getGroupWithMembers(groupId);
+  }
+    @Get('delete/:groupId')
+  deleteGroup(@Param('groupId') groupId: string) {
+    return this.groupService.deleteGroup(groupId);
   }
 
   @Get()
