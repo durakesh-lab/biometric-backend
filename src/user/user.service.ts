@@ -170,6 +170,7 @@ import { Branch } from 'src/branch/branch.schema';
 import { Department } from 'src/department/department.schema';
 import { Group } from 'src/groups/groups.schema';
 import * as moment from 'moment';
+
 @Injectable()
 export class UserService {
   constructor(@InjectModel('User') private userModel: Model<UserDocument>,@InjectModel(Company.name) private companyModel: Model<Company>,@InjectModel(Branch.name) private BranchModel: Model<Branch>,@InjectModel(Department.name) private deptModel: Model<Department>,@InjectModel(Group.name) private groupModel: Model<Group>) {}
