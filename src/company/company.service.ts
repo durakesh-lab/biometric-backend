@@ -154,7 +154,9 @@ async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
       count
     };
   }
-
+  async getallcompany(companyId: string) {
+    return this.companyModel.find({});
+  }
   async updateCompany(companyId: string, updateCompanyDto: CreateCompanyDto) {
     return this.companyModel.findByIdAndUpdate(companyId, updateCompanyDto, { new: true });
   }

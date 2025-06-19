@@ -6,6 +6,8 @@ import { CompanyModule } from './company/company.module';
 import { MicroserviceModule } from './microservice/microservice.module';
 import { BranchModule } from './branch/branch.module';
 import { DepartmentModule } from './department/department.module';
+import { GroupModule } from './groups/group.module';
+import { PermissionsModule } from './permission/permission.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { DepartmentModule } from './department/department.module';
     MicroserviceModule,
     BranchModule,
     DepartmentModule,
+    GroupModule,
+    PermissionsModule
   ],
 })
 export class AppModule {}

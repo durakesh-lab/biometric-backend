@@ -13,6 +13,20 @@ export class GroupService {
   async createGroup(dto: CreateGroupDto) {
     return new this.groupModel(dto).save();
   }
+  async editGroup(id: string, dto: any) {
+  const updated = await this.groupModel.findByIdAndUpdate(
+    id,
+    dto,
+    { new: true } // returns the updated document
+  );
+
+  if (!updated) {
+    throw new NotFoundException(`Group with id ${id} not found`);
+  }
+
+  return updated;
+}
+
 
   async addMembers(groupId: string, memberIds: string[]) {
     const group = await this.groupModel.findById(groupId);
@@ -26,6 +40,10 @@ export class GroupService {
   async getGroupWithMembers(groupId: string) {
     return this.groupModel.findById(groupId).populate('members');
   }
+async deleteGroup(groupId: string) {
+  return this.groupModel.findByIdAndDelete(groupId);
+}
+
 
   async getAllGroups() {
     return this.groupModel.find().populate('members');

@@ -165,10 +165,15 @@ import mongoose, { Model, Types } from 'mongoose';
 import { UserDocument } from './user.entity';
 import * as xlsx from 'xlsx';
 import * as bcrypt from 'bcrypt';
+import { Company } from 'src/company/company.schema';
+import { Branch } from 'src/branch/branch.schema';
+import { Department } from 'src/department/department.schema';
+import { Group } from 'src/groups/groups.schema';
+import * as moment from 'moment';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel('User') private userModel: Model<UserDocument>) {}
+  constructor(@InjectModel('User') private userModel: Model<UserDocument>,@InjectModel(Company.name) private companyModel: Model<Company>,@InjectModel(Branch.name) private BranchModel: Model<Branch>,@InjectModel(Department.name) private deptModel: Model<Department>,@InjectModel(Group.name) private groupModel: Model<Group>) {}
 
   async createUser(userDto: any): Promise<UserDocument> {
     const newUser = new this.userModel(userDto);
@@ -188,7 +193,22 @@ export class UserService {
     existingUser.set(body);
     return existingUser.save();
   }
-
+  async assigngroup(body: any): Promise<any> {
+    const existingUser = await this.userModel.findById(body.id);
+    if (!existingUser) throw new Error('User not found');
+    existingUser.set(body);
+    return existingUser.save();
+  }
+    async assigngroupbulk(body: any): Promise<any> {
+      let data =await Promise.all(body.userIds.map(async (e,i)=>{
+              const existingUser = await this.userModel.findById(e);
+    if (!existingUser) throw new Error('User not found');
+    existingUser.set({groupId:body.groupId});
+    return existingUser.save();
+      }))
+      return data
+   
+  }
   async findOne(username: string): Promise<UserDocument | null> {
     return this.userModel.findOne({ username });
   }
@@ -214,6 +234,70 @@ export class UserService {
     }
   }
 
+
+
+
+async usersbirdthday(body: { filter: 'today' | 'this_week' | 'this_month' | 'this_year' }): Promise<{ status: boolean; message?: string; data?: any }> {
+  try {
+    const filter = body.filter;
+    const today = moment();
+
+    let users = await this.userModel.find({});
+    let filteredUsers:any[] = [];
+
+    users.forEach(user => {
+      if (!user.date_of_birth) return;
+
+      const dob = moment(user.date_of_birth);
+      const birthdayThisYear = moment({ 
+        year: today.year(), 
+        month: dob.month(), 
+        day: dob.date() 
+      });
+
+      switch (filter) {
+        case 'today':
+          if (today.isSame(birthdayThisYear, 'day')) {
+            filteredUsers.push(user);
+          }
+          break;
+
+        case 'this_week':
+          const startOfWeek = today.clone().startOf('week');
+          const endOfWeek = today.clone().endOf('week');
+          if (birthdayThisYear.isBetween(startOfWeek, endOfWeek, 'day', '[]')) {
+            filteredUsers.push(user);
+          }
+          break;
+
+ case 'this_month':
+  if (
+    birthdayThisYear.month() === today.month() &&
+    birthdayThisYear.isSameOrAfter(today, 'day')
+  ) {
+    filteredUsers.push(user);
+  }
+  break;
+
+        case 'this_year':
+  if (birthdayThisYear.isSameOrAfter(today, 'day')) {
+    filteredUsers.push(user);
+  }
+  break;
+
+      }
+    });
+
+    return { status: true, data: filteredUsers };
+
+  } catch (error) {
+    console.error(error);
+    throw new Error('Error verifying fields');
+  }
+}
+
+
+
   async findById(id: string): Promise<UserDocument | null> {
     return this.userModel.findById(id);
   }
@@ -225,7 +309,7 @@ async importUsers(filePath: string): Promise<any> {
     
     // Process all rows and hash passwords
     const users = await Promise.all(data.map(async (row: any) => {
-        if (row.password && row.username && row.BranchId && row.DepartmentId && row.CompanyId) {
+        if (row.password && row.username && row["Branch Code"]&& row["Company Id"] && row['Department Code']) {
             return {
                 username: row.username,
                 password: await bcrypt.hash(row.password.toString(), 10),
@@ -236,9 +320,9 @@ async importUsers(filePath: string): Promise<any> {
                 lastName: row["Last Name"],
                 role: row.role,
                 active_status: row['active status']=="Inactive" ? "Inactive"  : 'Active',
-                branchId: row["BranchId"],
-                companyId: row["CompanyId"],
-                deptId: row['DepartmentId'],
+                branchCode: row["Branch Code"],
+                companyId: row["Company Id"],
+                deptCode: row['Department Code'],
                 joining_date: row['Date of Joining'],
                 date_of_birth: row['date of birth'],
             };
@@ -249,23 +333,63 @@ async importUsers(filePath: string): Promise<any> {
     // Filter out null entries and check for existing users
     const validUsers = users.filter(user => user !== null);
     // Check for existing users in parallel
+
     const existingChecks = await Promise.all(
-        validUsers.map(async (user) => {
+        validUsers.map(async (user: any) => {
             const existingUser = await this.userModel.findOne({ 
                 $or: [
                     { username: user.username },
                     { email: user.email }
                 ]
             });
-            return existingUser ? null : user;
+
+            if(!existingUser){
+
+              let checkcompanyCode=await this.companyModel.findOne({companyId:user.companyId})
+              if(checkcompanyCode){
+                user.companyId=checkcompanyCode._id
+             let checkbranchCode=await this.BranchModel.findOne({branchCode:user.branchCode})
+           if(checkbranchCode){
+
+                 delete user.branchCode
+                user.branchId=checkbranchCode._id
+            let checkdeptCode=await this.deptModel.findOne({dept_code:user.deptCode})
+                if(checkdeptCode){
+                    delete user.deptCode
+                    
+               user.deptId=checkdeptCode._id
+                return  user
+                }
+                else{
+                  return null
+                }
+                // return existingUser ? null : user;
+                 
+                
+           }else{
+               return null
+           }
+              }
+              else{
+                return null
+              }
+
+            }
+            else{
+              return null
+            }
+            
         })
     );
+                // console.log(checkbranchCode,'existingUsers#######')
 
+// console.log(existingChecks,"existingChecksexistingChecks#########$$$$$$")
     // Filter out users that already exist
     const newUsers = existingChecks.filter(user => user !== null);
     // console.log(newUsers,"validUsersvalidUsersvalidUsers#########")
   try {
-       return this.userModel.insertMany(newUsers);
+      let saved= await this.userModel.insertMany(newUsers);
+      return {status:true,message:"data inserted successfully",count:newUsers.length}
   } catch (error) {
      return {status:false,message:error.message}
 
@@ -273,7 +397,7 @@ async importUsers(filePath: string): Promise<any> {
  
 }
 
-  async getAllUsers(branchId: string, companyId: string, query: any): Promise<any> {
+async getAllUsers(branchId: string, companyId: string, query: any, type: any,groupId:any): Promise<any> {
     const {
       page = 1,
       page_size = 10,
@@ -289,11 +413,11 @@ async importUsers(filePath: string): Promise<any> {
 
     // Base filter
     const filter: any = { 
+...(groupId && { groupId }),
       branchId, 
       companyId, 
       role: { $ne: 'Super Admin' } 
     };
-
     if (search) {
       const searchRegex = new RegExp(search, 'i');
       filter.$or = [
@@ -351,7 +475,18 @@ async importUsers(filePath: string): Promise<any> {
               onError: null,
               onNull: null
             }
-          }
+          },
+          // Add groupIdObj conversion if type is "group"
+          ...(type === 'group' ? {
+            groupIdObj: {
+              $convert: {
+                input: '$groupId',
+                to: 'objectId',
+                onError: null,
+                onNull: null
+              }
+            }
+          } : {})
         }
       },
       {
@@ -381,6 +516,18 @@ async importUsers(filePath: string): Promise<any> {
         }
       },
       { $unwind: { path: '$companiesInfo', preserveNullAndEmptyArrays: true } },
+      // Add group lookup if type is "group"
+      ...(type === 'group' ? [
+        {
+          $lookup: {
+            from: 'groups',
+            localField: 'groupIdObj',
+            foreignField: '_id',
+            as: 'groupInfo'
+          }
+        },
+        { $unwind: { path: '$groupInfo', preserveNullAndEmptyArrays: true } }
+      ] : []),
       {
         $project: {
           _id: 1,
@@ -400,6 +547,15 @@ async importUsers(filePath: string): Promise<any> {
           dept_name: '$departmentInfo.name',
           branchCode: '$branchesInfo.branchCode',
           company_Id: '$companiesInfo.companyId',
+          // Include group fields if type is "group"
+          ...(type === 'group' ? {
+            groupId: '$groupId',
+            groupName: '$groupInfo.name',
+            groupColor: '$groupInfo.color',
+            groupStartTime: '$groupInfo.startTime',
+            groupEndTime: '$groupInfo.endTime',
+            groupDescription: '$groupInfo.description'
+          } : {})
         }
       }
     ];
@@ -427,6 +583,109 @@ async importUsers(filePath: string): Promise<any> {
     };
   }
   
+
+async getAllGroupsWithUserCount(branchId: string, companyId: string): Promise<any> {
+  const pipeline: any[] = [
+    // First, get all users that have a groupId and match the branch/company
+    {
+      $match: {
+        branchId,
+        companyId,
+        role: { $ne: 'Super Admin' },
+        groupId: { $exists: true, $ne: null }
+      }
+    },
+    // Convert groupId string to ObjectId for lookup
+    {
+      $addFields: {
+        groupIdObj: {
+          $convert: {
+            input: '$groupId',
+            to: 'objectId',
+            onError: null,
+            onNull: null
+          }
+        }
+      }
+    },
+    // Lookup group details
+    {
+      $lookup: {
+        from: 'groups',
+        localField: 'groupIdObj',
+        foreignField: '_id',
+        as: 'groupInfo'
+      }
+    },
+    // Unwind the group info (we only want users with valid groups)
+    {
+      $unwind: {
+        path: '$groupInfo',
+        preserveNullAndEmptyArrays: false // Exclude users without matching groups
+      }
+    },
+    // Group by groupId to count users and get group details
+    {
+      $group: {
+        _id: '$groupId',
+        groupName: { $first: '$groupInfo.name' },
+        groupColor: { $first: '$groupInfo.color' },
+        startTime: { $first: '$groupInfo.startTime' },
+        endTime: { $first: '$groupInfo.endTime' },
+        description: { $first: '$groupInfo.description' },
+        userCount: { $sum: 1 }
+      }
+    },
+    // Project to clean up the output
+    {
+      $project: {
+        _id: 0,
+        groupId: '$_id',
+        groupName: 1,
+        groupColor: 1,
+        startTime: 1,
+        endTime: 1,
+        description: 1,
+        userCount: 1
+      }
+    },
+    // Sort by group name
+    {
+      $sort: {
+        groupName: 1
+      }
+    }
+  ];
+
+  const data = await this.userModel.aggregate(pipeline).exec();
+
+  // Also get groups that exist but have no users assigned
+  const allGroups = await this.groupModel.find({
+    _id: { $exists: true }
+  }).lean();
+
+  const groupsWithUsers = new Set(data.map(g => g.groupId.toString()));
+  const groupsWithoutUsers = allGroups.filter(
+    g => !groupsWithUsers.has(g._id.toString())
+  ).map(g => ({
+    groupId: g._id,
+    groupName: g.name,
+    groupColor: g.color,
+    startTime: g.startTime,
+    endTime: g.endTime,
+    description: g.description,
+    userCount: 0
+  }));
+
+  const combinedResults = [...data, ...groupsWithoutUsers];
+
+  return {
+    data: combinedResults,
+    count: combinedResults.length
+  };
+}
+
+
   async deleteUsers(ids: string[]): Promise<{ message: string; deletedCount?: number }> {
     const objectIds: Types.ObjectId[] = [];
     const invalidIds: string[] = [];

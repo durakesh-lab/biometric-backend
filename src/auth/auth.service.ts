@@ -64,12 +64,16 @@ import * as bcrypt from 'bcrypt';
 import { LoginDto } from './login.dto';
 import { RegisterDto } from './register.dto';
 import { Department } from 'src/department/department.schema';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
+    @InjectConnection() private readonly connection: Connection
   ) {}
 
   async validateUser(username: string, password: string): Promise<any> {
@@ -88,7 +92,7 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = { username: user.username, sub: user._id, role: user.role };
+    const payload = { username: user.username,firstName: user.firstName,  sub: user._id, role: user.role };
     return {
       access_token: this.jwtService.sign(payload),
     };
@@ -142,9 +146,77 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
+    const settingsCollection = this.connection.collection('settings');
+  const settings:any = await settingsCollection.findOne({type:"2factor-authentication"}); // or use `find({}).toArray()` if multiple
+      const usercollection = this.connection.collection('users');
+  const users:any = await settingsCollection.findOne({username:loginDto.username}); 
+  // return settings
     // if (user.statusCode==401){
     //   return user
     // }
-    return this.login(user);
+    let w=await this.login(user)
+
+// After w = await this.login(user)
+const userCollection = this.connection.collection('users');
+
+// Check if code already exists and is still valid (within 5 minutes)
+const existingUser: any = await userCollection.findOne({ username: loginDto.username });
+
+const currentTime = new Date().getTime();
+let verificationCode = '';
+let shouldSendNewCode = true;
+
+if (
+  existingUser &&
+  existingUser.verificationCode &&
+  existingUser.codeGeneratedAt &&
+  currentTime - new Date(existingUser.codeGeneratedAt).getTime() < 5 * 60 * 1000
+) {
+  // Code still valid
+  verificationCode = existingUser.verificationCode;
+  shouldSendNewCode = false;
+} else {
+  // Generate new 6-digit code
+  verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Store code and timestamp in DB
+  await userCollection.updateOne(
+    { username: loginDto.username },
+    {
+      $set: {
+        verificationCode,
+        codeGeneratedAt: new Date(),
+      },
+    },
+    { upsert: true }
+  );
+}
+
+// Send Email only if needed
+if (shouldSendNewCode) {
+  // Configure nodemailer (Gmail example)
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user:"rajatgour98@gmail.com",
+      pass: 'agzv qdrj iiug zhom', // use App Password (if 2FA enabled)
+    },
+  });
+
+  const mailOptions = {
+    from:  "rajatgour98@gmail.com",
+    to:'g.rajat@onebillionideas.io',
+    subject: 'Your 2FA Verification Code',
+    text: `Your verification code For Biometric Login is ${verificationCode}. It is valid for 5 minutes.`,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+return {
+  ...w,
+  multifactorauth: settings?.datavalue || false,
+  message: 'Verification code sent to your email.',
+};
   }
 }

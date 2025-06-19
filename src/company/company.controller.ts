@@ -19,6 +19,10 @@ export class CompanyController {
   async getAllCompanies(@Query() query: any) {
     return this.companyService.getAllCompanies(query);
   }
+    @Get("allcompany")
+  async getCompanies(@Query() query: any) {
+    return this.companyService.getallcompany(query);
+  }
 
   @Get(':companyId/branches')
   getBranches( @Param('companyId') companyId: string,
