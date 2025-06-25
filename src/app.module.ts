@@ -8,11 +8,16 @@ import { BranchModule } from './branch/branch.module';
 import { DepartmentModule } from './department/department.module';
 import { GroupModule } from './groups/group.module';
 import { PermissionsModule } from './permission/permission.module';
+import { SettingModule } from './other api/setting.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+      ConfigModule.forRoot({
+      isGlobal: true, // makes config available everywhere
+    }),
     // MongooseModule.forRoot('mongodb://localhost:27017'),
-    MongooseModule.forRoot('mongodb+srv://paromita:GVoSVcDR2FiRliVO@cluster0.rrnavjn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'),
+    MongooseModule.forRoot(process.env.mongodb_cluster_url!),
     AuthModule,
     UserModule,
     CompanyModule, 
@@ -20,7 +25,8 @@ import { PermissionsModule } from './permission/permission.module';
     BranchModule,
     DepartmentModule,
     GroupModule,
-    PermissionsModule
+    PermissionsModule,
+    SettingModule
   ],
 })
 export class AppModule {}

@@ -41,4 +41,8 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.authenticate(loginDto);
   }
+    @Post('verifycode')
+  async verifycode(@Body() loginDto: any) {
+    return this.authService.verifycode(loginDto);
+  }
 }

@@ -298,9 +298,53 @@ async usersbirdthday(body: { filter: 'today' | 'this_week' | 'this_month' | 'thi
 
 
 
-  async findById(id: string): Promise<UserDocument | null> {
-    return this.userModel.findById(id);
-  }
+
+async findById(id: string): Promise<any> {
+  const objectId = new Types.ObjectId(id);
+
+  const result = await this.userModel.aggregate([
+    {
+      $match: { _id: objectId },
+    },
+    {
+      // Convert deptId (string) to ObjectId before lookup
+      $addFields: {
+        deptObjId: { $toObjectId: '$deptId' },
+      },
+    },
+    {
+      $lookup: {
+        from: 'departments',
+        localField: 'deptObjId',
+        foreignField: '_id',
+        as: 'department',
+      },
+    },
+    { $unwind: { path: '$department', preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        username: 1,
+        email: 1,
+        firstName: 1,
+        lastName: 1,
+        deptId: 1,
+        role:1,
+        active_status:1,
+        joining_date:1,
+        date_of_birth:1,
+        mobile:1,
+        department: {
+          name: 1,
+          dept_code: 1,
+          branchId: 1,
+        },
+      },
+    },
+  ]);
+
+  return result[0] || null;
+}
+
 
 async importUsers(filePath: string): Promise<any> {
     const workbook = xlsx.readFile(filePath);
