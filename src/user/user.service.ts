@@ -189,10 +189,12 @@ export class UserService {
   async editUser(body: any): Promise<any> {
     const existingUser = await this.userModel.findById(body.id);
     if (!existingUser) throw new Error('User not found');
+    console.log(body,"987655555555555")
     body.deptId = body.department;
     existingUser.set(body);
     return existingUser.save();
   }
+
   async assigngroup(body: any): Promise<any> {
     const existingUser = await this.userModel.findById(body.id);
     if (!existingUser) throw new Error('User not found');
@@ -333,7 +335,10 @@ async findById(id: string): Promise<any> {
         joining_date:1,
         date_of_birth:1,
         mobile:1,
+        gender:1,
+        editstatus:1,
         department: {
+          _id:1,
           name: 1,
           dept_code: 1,
           branchId: 1,
@@ -587,7 +592,9 @@ async getAllUsers(branchId: string, companyId: string, query: any, type: any,gro
           date_of_birth: 1,
           gender: 1,
           mobile: 1,
+          editstatus:1,
           dept_code: '$departmentInfo.dept_code',
+          dept_id:'$departmentInfo._id',
           dept_name: '$departmentInfo.name',
           branchCode: '$branchesInfo.branchCode',
           company_Id: '$companiesInfo.companyId',

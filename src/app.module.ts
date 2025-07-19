@@ -10,6 +10,7 @@ import { GroupModule } from './groups/group.module';
 import { PermissionsModule } from './permission/permission.module';
 import { SettingModule } from './other api/setting.module';
 import { ConfigModule } from '@nestjs/config';
+import { LeaveModule } from './leaves/leaves.module';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { ConfigModule } from '@nestjs/config';
     DepartmentModule,
     GroupModule,
     PermissionsModule,
-    SettingModule
+    SettingModule,
+    LeaveModule
   ],
 })
 export class AppModule {}

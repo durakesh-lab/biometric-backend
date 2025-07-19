@@ -33,6 +33,7 @@ export interface User extends Document {
   date_of_birth: string;
   branchId: string;
   companyId: string;
+  editStatus:boolean;
 }
 
 // Define the User Schema
@@ -67,6 +68,7 @@ export const UserSchema = new Schema({
    gender:{ type: String, required: false },
    mobile:{ type: Number, required: false },
   groupId:{ type: String, required: false },
+   editstatus:{ type: Boolean, required: false },
 
 });
 // Export the Mongoose Document type
