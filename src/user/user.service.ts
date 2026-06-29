@@ -2,7 +2,7 @@
 // import { Injectable } from '@nestjs/common';
 // import { InjectModel } from '@nestjs/mongoose';
 // import mongoose, { Model } from 'mongoose';
-// import { UserDocument } from './user.entity';  // Correct import for UserDocument
+// import { UserDocument } from './user.schema';  // Correct import for UserDocument
 
 // @Injectable()
 // export class UserService {
@@ -162,7 +162,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
-import { UserDocument } from './user.entity';
+import { UserDocument } from './user.schema';
 import * as xlsx from 'xlsx';
 import * as bcrypt from 'bcrypt';
 import { Company } from 'src/company/company.schema';
@@ -189,16 +189,26 @@ export class UserService {
   async editUser(body: any): Promise<any> {
     const existingUser = await this.userModel.findById(body.id);
     if (!existingUser) throw new Error('User not found');
-    console.log(body,"987655555555555")
-    body.deptId = body.department;
-    existingUser.set(body);
+
+    // SECURITY: never `set(body)` blindly — a client could inject role/active_status/editstatus.
+    // Only copy an explicit allow-list of editable fields.
+    const ALLOWED = [
+      'firstName', 'lastName', 'email', 'role', 'active_status',
+      'joining_date', 'date_of_birth', 'mobile', 'gender', 'branchId', 'companyId',
+    ];
+    for (const f of ALLOWED) {
+      if (body[f] !== undefined) existingUser.set(f, body[f]);
+    }
+    if (body.department !== undefined) existingUser.set('deptId', body.department);
+
     return existingUser.save();
   }
 
   async assigngroup(body: any): Promise<any> {
     const existingUser = await this.userModel.findById(body.id);
     if (!existingUser) throw new Error('User not found');
-    existingUser.set(body);
+    // Only the group assignment is allowed here — not arbitrary fields.
+    if (body.groupId !== undefined) existingUser.set('groupId', body.groupId);
     return existingUser.save();
   }
     async assigngroupbulk(body: any): Promise<any> {

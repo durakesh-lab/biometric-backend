@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose'; // Correct import
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
-import { UserSchema } from './user.entity'; // Correct schema import
+import { UserSchema } from './user.schema'; // Correct schema import
 import { Company, CompanySchema } from 'src/company/company.schema';
 import { Branch, BranchSchema } from 'src/branch/branch.schema';
 import { BranchModule } from 'src/branch/branch.module';

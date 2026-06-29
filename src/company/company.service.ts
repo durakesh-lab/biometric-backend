@@ -106,7 +106,6 @@ async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
       email = '',
       phoneNumber = '',
     } = query;
-  console.log(query,companyId,"companyIdcompanyIdcompanyId########")
     // Build the filter object
     const filter: any = { companyId: companyId };
   

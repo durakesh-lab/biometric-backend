@@ -15,6 +15,12 @@ export class SettingService {
     return this.settingModel.findOne({ type }).exec();
   }
     async postSettingByType(body: any): Promise<any> {
-    return this.settingModel.updateOne({ type :"2factor-authentication"},{datavalue:body.twoFAEnabled,email:body.email,appPassword:body.appPassword})
+    // Only persist the on/off toggle (+ optional display sender). SMTP password is
+    // NEVER stored — it lives in .env (SMTP_USER/SMTP_PASS). Any appPassword sent is ignored.
+    return this.settingModel.updateOne(
+      { type: '2factor-authentication' },
+      { datavalue: body.twoFAEnabled, email: body.email },
+      { upsert: true },
+    );
   }
 }

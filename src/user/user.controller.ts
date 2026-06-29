@@ -35,13 +35,18 @@ import {
   Body,
   Get,
   Param,
-  Query
+  Query,
+  Delete,
+  UseGuards,
+  BadRequestException
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { UserService } from './user.service';
 import type { Request } from 'express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -51,11 +56,27 @@ export class UserController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination: './uploads',
-        filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+        // Sanitize the original name (strip path/odd chars) before using it.
+        filename: (req, file, cb) => {
+          const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+          cb(null, `${Date.now()}-${safe}`);
+        },
       }),
+      // Only accept spreadsheet/CSV mimetypes (or .xlsx/.csv extension).
+      fileFilter: (req, file, cb) => {
+        const ok = /\.(xlsx|xls|csv)$/i.test(file.originalname) ||
+          [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel',
+            'text/csv',
+          ].includes(file.mimetype);
+        cb(ok ? null : new BadRequestException('Only .xlsx/.xls/.csv files are allowed'), ok);
+      },
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB cap (DoS guard)
     })
   )
   importUsers(@UploadedFile() file: any) {
+    if (!file) throw new BadRequestException('No file uploaded');
     return this.userService.importUsers(file.path);
   }
 
@@ -71,9 +92,16 @@ export class UserController {
   assigngroup_bulk(@Body() body: any) {
     return this.userService.assigngroupbulk(body);
   }
-  @Get('deleteUser/:id')
+  // Destructive → use DELETE verb (was GET, which is CSRF/prefetch-prone).
+  @Delete(':id')
   deleteUser(@Param('id') id: string) {
     return this.userService.deleteUser(id);
+  }
+
+  // Day 7: bulk delete (frontend calls POST /users/delete-bulk).
+  @Post('delete-bulk')
+  deleteUsersBulk(@Body() body: { ids: string[] }) {
+    return this.userService.deleteUsers(body.ids);
   }
 
 

@@ -45,7 +45,10 @@ async deleteGroup(groupId: string) {
 }
 
 
-  async getAllGroups() {
-    return this.groupModel.find().populate('members');
-  }
+async getAllGroups(query) {
+  return this.groupModel.find({
+    company_id: query.company_id,
+    branch_id: query.branch_id,
+  });
+}
 }

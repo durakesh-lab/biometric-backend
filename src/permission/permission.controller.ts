@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, UsePipes, ValidationPipe, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, UsePipes, ValidationPipe, Param, UseGuards } from '@nestjs/common';
 import { PermissionsService } from './permission.service';
-import { CreatePermissionDto } from './dtos/create-permission.dto';
-import { CreateSubPermissionDto } from './dtos/create-sub-permission.dto';
+import { CreatePermissionDto } from './dto/create-permission.dto';
+import { CreateSubPermissionDto } from './dto/create-sub-permission.dto';
 import { Permission } from './schemas/permission.schema';
 import { SubPermission } from './schemas/sub-permission.schema';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+@UseGuards(JwtAuthGuard)
 @Controller('permissions')
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}

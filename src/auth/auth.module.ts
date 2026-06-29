@@ -30,11 +30,17 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { UserModule } from '../user/user.module';
 
+// Fail fast: never fall back to a default/known secret (tokens could be forged).
+const JWT_SECRET = process.env.JWT_SECRET_KEY;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET_KEY is not set. Add it to .env before starting the app.');
+}
+
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET_KEY || 'secretKey',
+      secret: JWT_SECRET,
       signOptions: { expiresIn: '1h' },
     }),
     UserModule,

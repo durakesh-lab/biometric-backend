@@ -3,9 +3,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Permission } from './schemas/permission.schema';
 import { SubPermission } from './schemas/sub-permission.schema';
-import { CreatePermissionDto } from './dtos/create-permission.dto';
-import { CreateSubPermissionDto } from './dtos/create-sub-permission.dto';
-import { RolePermission } from './schemas/role-permission';
+import { CreatePermissionDto } from './dto/create-permission.dto';
+import { CreateSubPermissionDto } from './dto/create-sub-permission.dto';
+import { RolePermission } from './schemas/role-permission.schema';
 
 @Injectable()
 export class PermissionsService {

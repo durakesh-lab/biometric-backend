@@ -8,20 +8,24 @@ import { BranchModule } from './branch/branch.module';
 import { DepartmentModule } from './department/department.module';
 import { GroupModule } from './groups/group.module';
 import { PermissionsModule } from './permission/permission.module';
-import { SettingModule } from './other api/setting.module';
+import { SettingModule } from './settings/setting.module';
 import { ConfigModule } from '@nestjs/config';
 import { LeaveModule } from './leaves/leaves.module';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
       ConfigModule.forRoot({
       isGlobal: true, // makes config available everywhere
     }),
+    // Global rate limit: 100 requests / minute / IP (blunts DoS + brute-force).
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     // MongooseModule.forRoot('mongodb://localhost:27017'),
     MongooseModule.forRoot(process.env.mongodb_cluster_url!),
     AuthModule,
     UserModule,
-    CompanyModule, 
+    CompanyModule,
     MicroserviceModule,
     BranchModule,
     DepartmentModule,
@@ -29,6 +33,10 @@ import { LeaveModule } from './leaves/leaves.module';
     PermissionsModule,
     SettingModule,
     LeaveModule
+  ],
+  providers: [
+    // Apply the rate limiter globally.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

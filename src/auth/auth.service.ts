@@ -57,13 +57,12 @@
 // }
 
 
-import { Injectable, ConflictException, UnauthorizedException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './login.dto';
 import { RegisterDto } from './register.dto';
-import { Department } from 'src/department/department.schema';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import * as nodemailer from 'nodemailer';
@@ -94,12 +93,46 @@ export class AuthService {
   async login(user: any) {
     const payload = {branchId:user.branchId,companyId:user.companyId, username: user.username,firstName: user.firstName,  sub: user._id, role: user.role };
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(payload), // short-lived (1h)
+      // Refresh token: longer-lived, used only to obtain a new access token.
+      refresh_token: this.jwtService.sign(
+        { sub: user._id, username: user.username, type: 'refresh' },
+        { expiresIn: '7d' },
+      ),
     };
   }
 
-  async register(registerDto: any): Promise<any> {
-    const { username, password, role,   firstName,
+  /** Issue a fresh access token from a valid refresh token. */
+  async refresh(refreshToken: string) {
+    if (!refreshToken) throw new UnauthorizedException('Missing refresh token');
+    let decoded: any;
+    try {
+      decoded = this.jwtService.verify(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+    if (decoded.type !== 'refresh') {
+      throw new UnauthorizedException('Not a refresh token');
+    }
+    // Re-load the user so role/org changes (or deactivation) take effect.
+    const user: any = await this.userService.findOne(decoded.username);
+    if (!user || user.active_status === 'Inactive') {
+      throw new UnauthorizedException('User no longer active');
+    }
+    return this.login(user);
+  }
+
+  // Roles a caller is NEVER allowed to self-assign via public registration.
+  private static readonly ALLOWED_SELF_ROLE = 'Employee';
+
+  /**
+   * Register a user.
+   * @param registerDto  the submitted fields
+   * @param allowRole    only true when an authenticated admin (Super Admin / HR Admin)
+   *                     is creating the user. Public callers can NEVER set a role.
+   */
+  async register(registerDto: RegisterDto, allowRole = false): Promise<any> {
+    const { username, password, role, firstName,
       active_status,
       email,
       lastName,
@@ -107,25 +140,27 @@ export class AuthService {
       date_of_birth,
       branchId,
       department,
-      companyId,gender,mobile} = registerDto;
+      companyId, gender, mobile } = registerDto;
 
     const existingUser = await this.userService.findOne(username);
     if (existingUser) {
       throw new ConflictException('Username already exists');
     }
 
-    // const existingEmail = await this.userService.findByEmail(email);
-    // if (existingEmail) {
-    //   throw new ConflictException('Email already exists');
-    // }
+    // SECURITY: never trust a client-supplied role on public registration.
+    // Public signup is forced to 'Employee'; only an admin route may set a role.
+    // 'Super Admin' can never be created here at all (bootstrap/seed only).
+    let finalRole = AuthService.ALLOWED_SELF_ROLE;
+    if (allowRole && role && role !== 'Super Admin') {
+      finalRole = role;
+    }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
 
     const newUser = await this.userService.createUser({
       username,
-   
       password: hashedPassword,
-      role,  // Include role in user creation
+      role: finalRole,
       firstName,
       active_status,
       email,
@@ -134,11 +169,16 @@ export class AuthService {
       date_of_birth,
       branchId,
       companyId,
-      deptId:department,
-      gender,mobile
+      deptId: department,
+      gender, mobile
     });
 
     return newUser;
+  }
+
+  /** Admin-only path that is permitted to set the role (gated by guards in the controller). */
+  async adminCreateUser(registerDto: RegisterDto): Promise<any> {
+    return this.register(registerDto, true);
   }
 
 async authenticate(loginDto: LoginDto) {
@@ -171,22 +211,31 @@ async authenticate(loginDto: LoginDto) {
 
   // let w = await this.login(user);
 
-  // Only send email and update DB if new code is needed
-  if (settings.datavalue) {
+  // Only send email and update DB if new code is needed.
+  // Null-guard: on a fresh DB the settings doc may not exist → treat 2FA as OFF (don't crash).
+  if (settings?.datavalue) {
+    // SMTP credentials are a SINGLE server-side secret (the system sender mailbox),
+    // read from .env — NOT from the DB and NOT entered per-user in the UI.
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    if (!smtpUser || !smtpPass) {
+      throw new InternalServerErrorException(
+        '2FA is enabled but SMTP_USER / SMTP_PASS are not configured on the server.',
+      );
+    }
     try {
-      // Configure nodemailer (Gmail example)
+      // Configure nodemailer (Gmail example) from server env.
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
-          user: settings.email,
-          // user:settings.email,
-          pass: settings.appPassword, // use App Password (if 2FA enabled)
+          user: smtpUser,
+          pass: smtpPass, // Gmail App Password, stored only in .env
         },
       });
 
       const mailOptions = {
-        from:  settings.email,
-        to: existingUser.email,
+        from: smtpUser,
+        to: existingUser.email, // the OTP goes TO the user logging in
         subject: 'Your 2FA Verification Code',
         text: `Your verification code For Biometric Login is ${verificationCode}. It is valid for 5 minutes.`,
       };
@@ -201,6 +250,7 @@ async authenticate(loginDto: LoginDto) {
           $set: {
             verificationCode,
             codeGeneratedAt: new Date(),
+            codeAttempts: 0, // reset the brute-force counter for the new code
           },
         },
         { upsert: true }
@@ -230,28 +280,55 @@ async authenticate(loginDto: LoginDto) {
 
 
 async verifycode(body: any) {
-  try {
-     const usercheck = await this.validateUser(body.username, body.password);
-      
-
-    // const decoded = this.jwtService.verify(body.token, {
-    //   secret: 'secretKey', // or your secret_key variable
-    // });
- 
-
-    let userdata:any=await  this.userService.findOne(usercheck.username)
-const user = userdata.toObject();
-if(user.verificationCode==body.code){
-  let w = await this.login(usercheck);
-   return {status:true,message:"Code Verified Successfully",data:usercheck,...w};
-}else{
-  return {status:false,message:"invalid code"}
-}
-// console.log(user.verificationCode,6777777);
-  } catch (error) {
-    console.error('Invalid token', error.message);
-    throw new UnauthorizedException('Token verification failed');
+  const usercheck = await this.validateUser(body.username, body.password);
+  if (!usercheck) {
+    throw new UnauthorizedException('Invalid credentials');
   }
+
+  const userCollection = this.connection.collection('users');
+  const user: any = await userCollection.findOne({ username: usercheck.username });
+
+  // No code generated → nothing to verify.
+  if (!user?.verificationCode || !user?.codeGeneratedAt) {
+    throw new UnauthorizedException('No active verification code. Please log in again.');
+  }
+
+  // 1) Expiry: code is only valid for 5 minutes.
+  const ageMs = Date.now() - new Date(user.codeGeneratedAt).getTime();
+  if (ageMs > 5 * 60 * 1000) {
+    await userCollection.updateOne(
+      { username: usercheck.username },
+      { $unset: { verificationCode: '', codeGeneratedAt: '', codeAttempts: '' } },
+    );
+    throw new UnauthorizedException('Verification code expired. Please log in again.');
+  }
+
+  // 2) Brute-force cap: max 5 attempts, then invalidate the code.
+  const attempts = (user.codeAttempts || 0) + 1;
+  if (attempts > 5) {
+    await userCollection.updateOne(
+      { username: usercheck.username },
+      { $unset: { verificationCode: '', codeGeneratedAt: '', codeAttempts: '' } },
+    );
+    throw new UnauthorizedException('Too many attempts. Please log in again to get a new code.');
+  }
+
+  // 3) Wrong code → record the attempt, reject.
+  if (String(user.verificationCode) !== String(body.code)) {
+    await userCollection.updateOne(
+      { username: usercheck.username },
+      { $set: { codeAttempts: attempts } },
+    );
+    return { status: false, message: 'invalid code' };
+  }
+
+  // 4) Correct → clear the code so it can't be reused, then issue the token.
+  await userCollection.updateOne(
+    { username: usercheck.username },
+    { $unset: { verificationCode: '', codeGeneratedAt: '', codeAttempts: '' } },
+  );
+  const w = await this.login(usercheck);
+  return { status: true, message: 'Code Verified Successfully', data: usercheck, ...w };
 }
 
 }
