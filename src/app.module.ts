@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { EmployeeModule } from './employee/employee.module';
+import { DeviceModule } from './device/device.module';
+import { AttendanceModule } from './attendance/attendance.module';
 import { CompanyModule } from './company/company.module';
 import { MicroserviceModule } from './microservice/microservice.module';
 import { BranchModule } from './branch/branch.module';
@@ -25,6 +28,9 @@ import { APP_GUARD } from '@nestjs/core';
     MongooseModule.forRoot(process.env.mongodb_cluster_url!),
     AuthModule,
     UserModule,
+    EmployeeModule,
+    DeviceModule,
+    AttendanceModule,
     CompanyModule,
     MicroserviceModule,
     BranchModule,
