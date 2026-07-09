@@ -49,8 +49,8 @@ export class DepartmentController {
 
   // Create a new department
   @Post()
-  async createDepartment(@Body() createDepartmentDto: CreateDepartmentDto) {
-    return this.departmentService.createDepartment(createDepartmentDto);  // Create new department
+  async createDepartment(@Body() body: any) {
+    return this.departmentService.createDepartment(body);  // Create new department
   }
 
   // Update an existing department

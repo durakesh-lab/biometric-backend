@@ -112,8 +112,16 @@ async getDepartmentsByBranchId(
   };
 }
 
-  createDepartment(createDepartmentDto: CreateDepartmentDto) {
-         let dept_data=new this.deptModel({...createDepartmentDto})
+  createDepartment(createDepartmentDto: any) {
+         const payload = {
+           name: createDepartmentDto?.name ?? createDepartmentDto?.departmentName ?? '',
+           dept_code: createDepartmentDto?.dept_code ?? createDepartmentDto?.deptCode ?? '',
+           branchId: createDepartmentDto?.branchId ?? createDepartmentDto?.branch_id ?? createDepartmentDto?.branch ?? '',
+           company_id: createDepartmentDto?.company_id ?? createDepartmentDto?.companyId ?? '',
+           otherDetails: createDepartmentDto?.otherDetails ?? '',
+         };
+
+         let dept_data = new this.deptModel(payload);
          return dept_data.save()
     // const newDepartment = { id: Date.now(), ...createDepartmentDto };
     // this.departments.push(newDepartment);
