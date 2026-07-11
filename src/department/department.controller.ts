@@ -38,6 +38,12 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class DepartmentController {
   constructor(private readonly departmentService: DepartmentService) {}
 
+  // Get every department across all branches.
+  @Get()
+  async getAllDepartments(@Query() query: any) {
+    return this.departmentService.getAllDepartments(query);
+  }
+
   // Get all departments for a given branch
   @Get(':branchId')
   async getDepartmentsByBranch(

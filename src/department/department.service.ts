@@ -54,63 +54,80 @@ export class DepartmentService {
     { id: 3, name: 'Department 3', branchId: 2 },
   ];
 
-// department.service.ts
-async getDepartmentsByBranchId(
-  branchId: string,
-  query: any
-): Promise<{ data: Department[]; count: number }> {
-  const {
-    page = 1,
-    page_size = 10,
-    search = '',
-    ordering = '',
-    name = '',
-    dept_code = '',
-  } = query;
+  private async listDepartments(branchId: string, query: any): Promise<{
+    data: Department[];
+    count: number;
+    page: number;
+    page_size: number;
+    total_pages: number;
+  }> {
+    const {
+      page,
+      page_size,
+      search = '',
+      ordering = '',
+      name = '',
+      dept_code = '',
+    } = query || {};
 
-  // Build the filter object
-  const filter: any = { branchId };
+    const filter: any = {};
+    if (branchId) filter.branchId = branchId;
 
-  // Search across multiple fields if search term is provided
-  if (search) {
-    filter.$or = [
-      { name: new RegExp(search, 'i') },
-      { dept_code: new RegExp(search, 'i') },
-      { otherDetails: new RegExp(search, 'i') },
-    ];
+    if (search) {
+      filter.$or = [
+        { name: new RegExp(search, 'i') },
+        { dept_code: new RegExp(search, 'i') },
+        { otherDetails: new RegExp(search, 'i') },
+      ];
+    }
+
+    if (name) filter.name = new RegExp(name, 'i');
+    if (dept_code) filter.dept_code = new RegExp(dept_code, 'i');
+
+    const sort: any = {};
+    if (ordering) {
+      const sortDirection = ordering.startsWith('-') ? -1 : 1;
+      const sortField = ordering.startsWith('-') ? ordering.substring(1) : ordering;
+      sort[sortField] = sortDirection;
+    }
+
+    const shouldPaginate = page_size !== undefined && page_size !== null && page_size !== '';
+    const currentPage = shouldPaginate ? Math.max(parseInt(page, 10) || 1, 1) : 1;
+    const limit = shouldPaginate ? Math.max(parseInt(page_size, 10) || 0, 0) : 0;
+    const skip = shouldPaginate ? (currentPage - 1) * limit : 0;
+
+    let listQuery = this.deptModel.find(filter);
+    if (Object.keys(sort).length > 0) {
+      listQuery = listQuery.sort(sort);
+    }
+    if (shouldPaginate && limit > 0) {
+      listQuery = listQuery.skip(skip).limit(limit);
+    }
+
+    const [data, count] = await Promise.all([
+      listQuery.exec(),
+      this.deptModel.countDocuments(filter).exec(),
+    ]);
+
+    return {
+      data,
+      count,
+      page: currentPage,
+      page_size: shouldPaginate ? limit : count,
+      total_pages: shouldPaginate && limit > 0 ? Math.ceil(count / limit) : 1,
+    };
   }
 
-  // Individual field filters
-  if (name) filter.name = new RegExp(name, 'i');
-  if (dept_code) filter.dept_code = new RegExp(dept_code, 'i');
-
-  // Handle sorting
-  let sort = {};
-  if (ordering) {
-    const sortDirection = ordering.startsWith('-') ? -1 : 1;
-    const sortField = ordering.startsWith('-') ? ordering.substring(1) : ordering;
-    sort = { [sortField]: sortDirection };
+  async getDepartmentsByBranchId(
+    branchId: string,
+    query: any,
+  ): Promise<{ data: Department[]; count: number }> {
+    return this.listDepartments(branchId, query);
   }
 
-  // Calculate pagination
-  const skip = (page - 1) * page_size;
-  const limit = parseInt(page_size);
-
-  // Execute queries
-  const data = await this.deptModel
-    .find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(limit)
-    .exec();
-
-  const count = await this.deptModel.countDocuments(filter);
-
-  return {
-    data,
-    count
-  };
-}
+  async getAllDepartments(query: any): Promise<{ data: Department[]; count: number }> {
+    return this.listDepartments('', query);
+  }
 
   createDepartment(createDepartmentDto: any) {
          const payload = {
