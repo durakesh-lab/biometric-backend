@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Attendance } from './attendance.schema';
 import { Employee } from '../employee/employee.schema';
 import { Device } from '../device/device.schema';
@@ -152,15 +152,17 @@ export class AttendanceService {
   }
 
   // ── Simple stats for the top cards ────────────────────────────────────────
-  async stats(branchId: string, query: any): Promise<any> {
+  async stats(branchId: string, companyId: string, query: any): Promise<any> {
     const day = query.date ? new Date(query.date) : new Date();
     const start = new Date(day); start.setHours(0, 0, 0, 0);
     const end = new Date(day); end.setHours(23, 59, 59, 999);
 
     const empFilter: any = {};
     if (branchId) empFilter.branchId = branchId;
+    if (companyId) empFilter.companyId = companyId;
     const attFilter: any = { timestamp: { $gte: start, $lte: end } };
     if (branchId) attFilter.branchId = branchId;
+    if (companyId) attFilter.companyId = companyId;
 
     const totalEmployees = await this.employeeModel.countDocuments(empFilter);
     const presentIds = await this.attendanceModel.distinct('employeeId', attFilter);

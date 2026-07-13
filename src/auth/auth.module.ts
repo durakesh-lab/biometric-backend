@@ -11,7 +11,7 @@
 //     PassportModule.register({ defaultStrategy: 'jwt' }),
 //     JwtModule.register({
 //       secret: process.env.JWT_SECRET_KEY || 'secretKey',
-//       signOptions: { expiresIn: '1h' },
+//       signOptions: { expiresIn: '3h' },
 //     }),
 //     UserModule,  // Ensure the UserModule is correctly imported for user validation
 //   ],
@@ -41,7 +41,7 @@ if (!JWT_SECRET) {
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: JWT_SECRET,
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: '3h' },
     }),
     UserModule,
   ],

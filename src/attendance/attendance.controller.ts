@@ -22,7 +22,7 @@ export class AttendanceController {
   // Top summary cards.
   @Post('stats')
   stats(@Body() body: any, @Query() query: any) {
-    return this.attendanceService.stats(body?.branchId, query);
+    return this.attendanceService.stats(body?.branchId, body?.companyId, query);
   }
 
   // Demo: inject a punch for an enrolled employee (no hardware needed).

@@ -67,7 +67,7 @@ export class AuthController {
     return this.authService.verifycode(loginDto);
   }
 
-  // Exchange a valid refresh token for a new access token (avoids 1h hard logout).
+  // Exchange a valid refresh token for a new access token (avoids early logout).
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('refresh')
   async refresh(@Body('refresh_token') refreshToken: string) {

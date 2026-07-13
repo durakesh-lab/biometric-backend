@@ -10,6 +10,7 @@ import { MicroserviceModule } from './microservice/microservice.module';
 import { BranchModule } from './branch/branch.module';
 import { DepartmentModule } from './department/department.module';
 import { GroupModule } from './groups/group.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { PermissionsModule } from './permission/permission.module';
 import { SettingModule } from './settings/setting.module';
 import { ConfigModule } from '@nestjs/config';
@@ -36,6 +37,7 @@ import { APP_GUARD } from '@nestjs/core';
     BranchModule,
     DepartmentModule,
     GroupModule,
+    DashboardModule,
     PermissionsModule,
     SettingModule,
     LeaveModule

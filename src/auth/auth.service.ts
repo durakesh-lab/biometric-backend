@@ -93,7 +93,7 @@ export class AuthService {
   async login(user: any) {
     const payload = {branchId:user.branchId,companyId:user.companyId, username: user.username,firstName: user.firstName,  sub: user._id, role: user.role };
     return {
-      access_token: this.jwtService.sign(payload), // short-lived (1h)
+      access_token: this.jwtService.sign(payload, { expiresIn: '3h' }), // longer-lived access token
       // Refresh token: longer-lived, used only to obtain a new access token.
       refresh_token: this.jwtService.sign(
         { sub: user._id, username: user.username, type: 'refresh' },
