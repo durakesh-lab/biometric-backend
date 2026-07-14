@@ -49,7 +49,7 @@ export class AttendanceService {
           employeeId: String(employee._id),
           deviceUserId: empCode,
           timestamp: ts,
-          type: Number(p.punch_state ?? p.state ?? 0) === 1 ? 'out' : 'in',
+          // type: Number(p.punch_state ?? p.state ?? 0) === 1 ? 'out' : 'in',
           deviceId: String(device._id),
           companyId: employee.companyId,
           branchId: employee.branchId,
@@ -82,23 +82,23 @@ export class AttendanceService {
   }
 
   // ── Demo helper: inject a punch without hardware ──────────────────────────
-  async addTestPunch(body: any): Promise<any> {
-    const employee = await this.employeeModel.findById(body.employeeId);
-    if (!employee) throw new BadRequestException('Employee not found');
-    if (!employee.deviceUserId) {
-      throw new BadRequestException('Employee is not enrolled (no Device User ID) — link one in Enrollment first');
-    }
-    const row = await this.attendanceModel.create({
-      employeeId: String(employee._id),
-      deviceUserId: employee.deviceUserId,
-      timestamp: body.timestamp ? new Date(body.timestamp) : new Date(),
-      type: body.type === 'out' ? 'out' : 'in',
-      deviceId: body.deviceId || '',
-      companyId: employee.companyId,
-      branchId: employee.branchId,
-    });
-    return { status: true, data: row };
-  }
+  // async addTestPunch(body: any): Promise<any> {
+  //   const employee = await this.employeeModel.findById(body.employeeId);
+  //   if (!employee) throw new BadRequestException('Employee not found');
+  //   if (!employee.deviceUserId) {
+  //     throw new BadRequestException('Employee is not enrolled (no Device User ID) — link one in Enrollment first');
+  //   }
+  //   const row = await this.attendanceModel.create({
+  //     employeeId: String(employee._id),
+  //     deviceUserId: employee.deviceUserId,
+  //     timestamp: body.timestamp ? new Date(body.timestamp) : new Date(),
+  //     type: body.type === 'out' ? 'out' : 'in',
+  //     deviceId: body.deviceId || '',
+  //     companyId: employee.companyId,
+  //     branchId: employee.branchId,
+  //   });
+  //   return { status: true, data: row };
+  // }
 
   // ── List punches with employee + device names joined ──────────────────────
   async list(branchId: string, query: any): Promise<any> {
@@ -130,7 +130,7 @@ export class AttendanceService {
       { $unwind: { path: '$br', preserveNullAndEmptyArrays: true } },
       {
         $project: {
-          _id: 1, timestamp: 1, type: 1, deviceUserId: 1,
+          _id: 1, timestamp: 1, deviceUserId: 1,
           employeeName: { $trim: { input: { $concat: [{ $ifNull: ['$emp.firstName', ''] }, ' ', { $ifNull: ['$emp.lastName', ''] }] } } },
           deviceName: '$dev.name',
           branch_name: '$br.name',

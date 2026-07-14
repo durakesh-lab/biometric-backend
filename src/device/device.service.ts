@@ -8,7 +8,6 @@ const ALLOWED_FIELDS = [
   'serialNumber',
   'wdmsBaseUrl',
   'wdmsToken',
-  'terminalId',
   'companyId',
   'branchId',
   'status',
@@ -35,13 +34,37 @@ export class DeviceService {
     if (!payload.companyId || !payload.branchId) {
       throw new BadRequestException('Company and branch are required');
     }
+    if (!payload.wdmsBaseUrl || !payload.wdmsToken) {
+      throw new BadRequestException('EasyWDMS URL and WDMS Token are required');
+    }
+
+    const connTest = await this.testConnection(payload.wdmsBaseUrl, payload.wdmsToken, payload.serialNumber);
+    if (!connTest.ok) {
+      throw new BadRequestException(`Connection test failed: ${connTest.message}`);
+    }
+    payload.status = 'Online';
+    payload.lastSyncAt = new Date();
+
     return new this.deviceModel(payload).save();
   }
 
   async updateDevice(id: string, body: any): Promise<any> {
     const existing = await this.deviceModel.findById(id);
     if (!existing) throw new BadRequestException('Device not found');
-    existing.set(this.pick(body));
+    const payload = this.pick(body);
+
+    if (!payload.wdmsBaseUrl || !payload.wdmsToken) {
+      throw new BadRequestException('EasyWDMS URL and WDMS Token are required');
+    }
+
+    const connTest = await this.testConnection(payload.wdmsBaseUrl, payload.wdmsToken, payload.serialNumber);
+    if (!connTest.ok) {
+      throw new BadRequestException(`Connection test failed: ${connTest.message}`);
+    }
+    payload.status = 'Online';
+    payload.lastSyncAt = new Date();
+
+    existing.set(payload);
     return existing.save();
   }
 
@@ -85,7 +108,7 @@ export class DeviceService {
       { $unwind: { path: '$companyInfo', preserveNullAndEmptyArrays: true } },
       {
         $project: {
-          _id: 1, name: 1, serialNumber: 1, wdmsBaseUrl: 1, terminalId: 1,
+          _id: 1, name: 1, serialNumber: 1, wdmsBaseUrl: 1,
           companyId: 1, branchId: 1, status: 1, lastSyncAt: 1,
           branch_name: '$branchInfo.name',
           company_name: '$companyInfo.name',
@@ -105,19 +128,54 @@ export class DeviceService {
     return { data, count: total, page: parseInt(page), page_size: limit, total_pages: Math.ceil(total / limit) };
   }
 
-  // Ping the EasyWDMS URL to check reachability (no real device needed to test the plumbing).
-  async testConnection(baseUrl: string, tokenStr?: string): Promise<{ ok: boolean; message: string }> {
+  // Ping the EasyWDMS URL to check reachability (or verify physical machine if serial is provided).
+  async testConnection(
+    baseUrl: string,
+    tokenStr?: string,
+    serialNumber?: string,
+  ): Promise<{ ok: boolean; message: string }> {
     if (!baseUrl) return { ok: false, message: 'No EasyWDMS URL provided' };
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 6000);
+
+    // If serialNumber is provided, verify the actual physical terminal status.
+    const url = serialNumber
+      ? `${baseUrl.replace(/\/$/, '')}/iclock/api/terminals/${serialNumber}/`
+      : baseUrl;
+
     try {
-      const res = await fetch(baseUrl, {
+      const res = await fetch(url, {
         method: 'GET',
         signal: controller.signal,
         headers: tokenStr ? { Authorization: `Token ${tokenStr}` } : {},
       });
       clearTimeout(timer);
-      return { ok: true, message: `Reachable (HTTP ${res.status})` };
+      if (res.ok) {
+        if (serialNumber) {
+          const data = await res.json().catch(() => ({}));
+          // Read terminal state from EasyWDMS response (1 = Online, 3 = Offline)
+          const stateVal = data.state !== undefined ? Number(data.state) : null;
+          if (stateVal !== null) {
+            if (stateVal === 1) {
+              return { ok: true, message: `Connected (Device Online)` };
+            } else {
+              return { ok: false, message: `Device is Offline in EasyWDMS (State: ${stateVal})` };
+            }
+          }
+          
+          const state = String(data.status ?? '').toLowerCase();
+          if (state === 'offline' || state === 'false') {
+            return { ok: false, message: `Device is Offline in EasyWDMS` };
+          }
+          return { ok: true, message: `Connected (Device Online)` };
+        }
+        return { ok: true, message: `Reachable (HTTP ${res.status})` };
+      } else {
+        if (res.status === 404 && serialNumber) {
+          return { ok: false, message: `Device Serial ${serialNumber} not found on EasyWDMS` };
+        }
+        return { ok: false, message: `Connection failed (HTTP ${res.status})` };
+      }
     } catch (e: any) {
       clearTimeout(timer);
       return { ok: false, message: `Unreachable: ${e.message}` };
@@ -127,7 +185,7 @@ export class DeviceService {
   async testDevice(id: string): Promise<{ ok: boolean; message: string }> {
     const device = await this.deviceModel.findById(id);
     if (!device) throw new BadRequestException('Device not found');
-    const result = await this.testConnection(device.wdmsBaseUrl, device.wdmsToken);
+    const result = await this.testConnection(device.wdmsBaseUrl, device.wdmsToken, device.serialNumber);
     device.set('status', result.ok ? 'Online' : 'Offline');
     if (result.ok) device.set('lastSyncAt', new Date());
     await device.save();

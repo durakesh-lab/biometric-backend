@@ -11,7 +11,6 @@ export class Device extends Document {
   // EasyWDMS connection
   @Prop({ required: false }) wdmsBaseUrl: string;   // e.g. http://192.168.0.104:8081
   @Prop({ required: false }) wdmsToken: string;     // API token from /api-token-auth/
-  @Prop({ required: false }) terminalId: string;    // terminal/serial id inside EasyWDMS
 
   @Prop({ required: true }) companyId: string;
   @Prop({ required: true }) branchId: string;

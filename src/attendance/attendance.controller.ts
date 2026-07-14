@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @UseGuards(JwtAuthGuard)
 @Controller('attendance')
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) {}
+  constructor(private readonly attendanceService: AttendanceService) { }
 
   // Pull punches from EasyWDMS (all devices, or one via body.deviceId).
   @Post('sync')
@@ -26,8 +26,8 @@ export class AttendanceController {
   }
 
   // Demo: inject a punch for an enrolled employee (no hardware needed).
-  @Post('test-punch')
-  testPunch(@Body() body: any) {
-    return this.attendanceService.addTestPunch(body);
-  }
+  // @Post('test-punch')
+  // testPunch(@Body() body: any) {
+  //   return this.attendanceService.addTestPunch(body);
+  // }
 }

@@ -27,10 +27,9 @@ export class DeviceController {
     return this.deviceService.getAllDevices(body?.branchId, body?.companyId, query);
   }
 
-  // Test an EasyWDMS URL before saving (Register modal's "Test connection").
   @Post('test')
   test(@Body() body: any) {
-    return this.deviceService.testConnection(body?.wdmsBaseUrl, body?.wdmsToken);
+    return this.deviceService.testConnection(body?.wdmsBaseUrl, body?.wdmsToken, body?.serialNumber);
   }
 
   // Test a saved device (updates its status).

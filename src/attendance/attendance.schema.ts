@@ -7,7 +7,7 @@ export class Attendance extends Document {
   @Prop({ required: true }) employeeId: string;   // our employees._id
   @Prop({ required: true }) deviceUserId: string; // the device emp_code that matched
   @Prop({ required: true }) timestamp: Date;
-  @Prop({ enum: ['in', 'out'], default: 'in' }) type: string;
+  // @Prop({ enum: ['in', 'out'], default: 'in' }) type: string;
   @Prop({ required: false }) deviceId: string;    // our devices._id (source)
   @Prop({ required: false }) companyId: string;
   @Prop({ required: false }) branchId: string;
