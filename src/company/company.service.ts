@@ -19,19 +19,19 @@ export class CompanyService {
   //   return this.companyModel.find().populate('branches').exec();  // Ensure branches are populated
   // }
 // company.service.ts
-async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
-  const {
-    page,
-    page_size,
-    search = '',
-    ordering = '',
-    companyId = '',
-    name = '',
-    owner = '',
-    email = '',
-    phoneNumber = '',
-    industry = '',
-  } = query;
+  async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
+    const {
+      page = 1,
+      page_size = 10,
+      search = '',
+      ordering = '',
+      companyId = '',
+      name = '',
+      owner = '',
+      email = '',
+      phoneNumber = '',
+      industry = '',
+    } = query;
 
   // Build the filter object
   const filter: any = {};
@@ -65,22 +65,16 @@ async getAllCompanies(query: any): Promise<{ data: Company[]; count: number }> {
   }
 
   // Calculate pagination
-  if(page && page_size){
-  var skip = (page - 1) * page_size;
-  var limit = parseInt(page_size);
-    var data = await this.companyModel
+  const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+  const parsedPageSize = Math.max(parseInt(page_size, 10) || 10, 1);
+  const skip = (parsedPage - 1) * parsedPageSize;
+  const limit = parsedPageSize;
+  const data = await this.companyModel
     .find(filter)
     .sort(sort)
     .skip(skip)
     .limit(limit)
     .exec();
-  }
-  else{
-  var data = await this.companyModel
-    .find(filter)
-    .sort(sort)
-    .exec();
-  }
 
 
 
