@@ -54,6 +54,24 @@ export class EmployeeService {
     if (!payload.companyId || !payload.branchId) {
       throw new BadRequestException('Company and branch are required');
     }
+    if (payload.email) {
+      const dup = await this.employeeModel.findOne({ email: payload.email });
+      if (dup) {
+        throw new BadRequestException(`Email "${payload.email}" is already assigned to employee "${dup.firstName} ${dup.lastName}".`);
+      }
+    }
+    if (payload.employeeCode) {
+      const dup = await this.employeeModel.findOne({ employeeCode: payload.employeeCode });
+      if (dup) {
+        throw new BadRequestException(`Employee Code "${payload.employeeCode}" is already assigned to employee "${dup.firstName} ${dup.lastName}".`);
+      }
+    }
+    if (payload.deviceUserId) {
+      const dup = await this.employeeModel.findOne({ deviceUserId: payload.deviceUserId });
+      if (dup) {
+        throw new BadRequestException(`Device ID "${payload.deviceUserId}" is already assigned to employee "${dup.firstName} ${dup.lastName}".`);
+      }
+    }
     const employee = new this.employeeModel(payload);
     return employee.save();
   }
@@ -62,6 +80,33 @@ export class EmployeeService {
     const existing = await this.employeeModel.findById(id);
     if (!existing) throw new BadRequestException('Employee not found');
     const payload = this.pick(body);
+    if (payload.email) {
+      const dup = await this.employeeModel.findOne({
+        email: payload.email,
+        _id: { $ne: existing._id },
+      });
+      if (dup) {
+        throw new BadRequestException(`Email "${payload.email}" is already assigned to employee "${dup.firstName} ${dup.lastName}".`);
+      }
+    }
+    if (payload.employeeCode) {
+      const dup = await this.employeeModel.findOne({
+        employeeCode: payload.employeeCode,
+        _id: { $ne: existing._id },
+      });
+      if (dup) {
+        throw new BadRequestException(`Employee Code "${payload.employeeCode}" is already assigned to employee "${dup.firstName} ${dup.lastName}".`);
+      }
+    }
+    if (payload.deviceUserId) {
+      const dup = await this.employeeModel.findOne({
+        deviceUserId: payload.deviceUserId,
+        _id: { $ne: existing._id },
+      });
+      if (dup) {
+        throw new BadRequestException(`Device ID "${payload.deviceUserId}" is already assigned to employee "${dup.firstName} ${dup.lastName}".`);
+      }
+    }
     existing.set(payload);
     return existing.save();
   }
@@ -209,16 +254,24 @@ export class EmployeeService {
   }
 
   async checkAndVerifyFields(body: any): Promise<{ status: boolean; message?: string }> {
+    const idFilter = body.id ? { _id: { $ne: body.id } } : {};
+
     if (body.field === 'email') {
-      const check = await this.employeeModel.find({ email: body.email });
+      const check = await this.employeeModel.find({ email: body.email, ...idFilter });
       return check.length
         ? { status: false, message: 'Email already exists' }
         : { status: true };
     }
     if (body.field === 'employeeCode') {
-      const check = await this.employeeModel.find({ employeeCode: body.employeeCode });
+      const check = await this.employeeModel.find({ employeeCode: body.employeeCode, ...idFilter });
       return check.length
         ? { status: false, message: 'Employee code already exists' }
+        : { status: true };
+    }
+    if (body.field === 'deviceUserId') {
+      const check = await this.employeeModel.find({ deviceUserId: body.deviceUserId, ...idFilter });
+      return check.length
+        ? { status: false, message: 'Device ID already exists' }
         : { status: true };
     }
     return { status: false, message: 'Invalid field specified' };
@@ -256,6 +309,11 @@ export class EmployeeService {
         // skip if an employee with this email already exists
         if (emp.email) {
           const dup = await this.employeeModel.findOne({ email: emp.email });
+          if (dup) return null;
+        }
+        // skip if an employee with this deviceUserId already exists
+        if (emp.deviceUserId) {
+          const dup = await this.employeeModel.findOne({ deviceUserId: emp.deviceUserId });
           if (dup) return null;
         }
         const company = await this.companyModel.findOne({ companyId: emp.companyId });

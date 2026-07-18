@@ -159,7 +159,7 @@ export class DeviceService {
             if (stateVal === 1) {
               return { ok: true, message: `Connected (Device Online)` };
             } else {
-              return { ok: false, message: `Device is Offline in EasyWDMS (State: ${stateVal})` };
+              return { ok: false, message: 'Device is Offline in EasyWDMS' };
             }
           }
           

@@ -101,11 +101,12 @@ export class AttendanceService {
   // }
 
   // ── List punches with employee + device names joined ──────────────────────
-  async list(branchId: string, query: any): Promise<any> {
+  async list(branchId: string, companyId: string, query: any): Promise<any> {
     const { page = 1, page_size = 20, from = '', to = '', employeeId = '', search = '' } = query;
 
     const filter: any = {};
     if (branchId) filter.branchId = branchId;
+    if (companyId) filter.companyId = companyId;
     if (employeeId) filter.employeeId = employeeId;
     if (from || to) {
       filter.timestamp = {};
