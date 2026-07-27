@@ -27,6 +27,12 @@ export class DeviceController {
     return this.deviceService.getAllDevices(body?.branchId, body?.companyId, query);
   }
 
+  // Assignment listing — sanitized (no serial/URL/token)
+  @Post('assignment-list')
+  assignmentList(@Body() body: any, @Query() query: any) {
+    return this.deviceService.getAssignmentList(body?.branchId, body?.companyId, query);
+  }
+
   @Post('test')
   test(@Body() body: any) {
     return this.deviceService.testConnection(body?.wdmsBaseUrl, body?.wdmsToken, body?.serialNumber);
@@ -36,6 +42,12 @@ export class DeviceController {
   @Post(':id/test')
   testById(@Param('id') id: string) {
     return this.deviceService.testDevice(id);
+  }
+
+  // Pure assignment update — DB only (companyId mandatory, no connection test or WDMS fields touch)
+  @Put(':id/assign')
+  assign(@Param('id') id: string, @Body() body: any) {
+    return this.deviceService.assignDevice(id, body);
   }
 
   @Put(':id')

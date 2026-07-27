@@ -1,6 +1,19 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+@Schema({ _id: false })
+export class DeviceLink {
+  @Prop({ required: true })
+  deviceId: string;
+
+  // Schedule rules reserved for future requirements:
+  // @Prop({ type: [Number], default: [] }) allowedDays?: number[];
+  // @Prop({ required: false }) startTime?: string;
+  // @Prop({ required: false }) endTime?: string;
+}
+
+export const DeviceLinkSchema = SchemaFactory.createForClass(DeviceLink);
+
 // An Employee is a person whose ATTENDANCE is tracked.
 // It is NOT a system user: there is no username / password / role here.
 // (System logins live in the separate `users` collection.)
@@ -27,6 +40,8 @@ export class Employee extends Document {
 
   // Bridge to the biometric hardware. Blank until the person is enrolled on the device.
   @Prop({ required: false, default: '' }) deviceUserId: string;
+
+  @Prop({ type: [DeviceLinkSchema], default: [] }) deviceLinks: DeviceLink[];
 
   @Prop({ enum: ['Active', 'Inactive'], default: 'Active' }) active_status: string;
 

@@ -6,6 +6,7 @@ import { Employee } from './employee.schema';
 import { Company } from 'src/company/company.schema';
 import { Branch } from 'src/branch/branch.schema';
 import { Department } from 'src/department/department.schema';
+import { Device } from 'src/device/device.schema';
 
 // The ONLY fields an employee record may hold. Anything else the client sends
 // (username / password / role / etc.) is dropped here — employees never get credentials.
@@ -20,6 +21,7 @@ const ALLOWED_FIELDS = [
   'deptId',
   'employeeCode',
   'deviceUserId',
+  'deviceLinks',
   'active_status',
   'joining_date',
   'date_of_birth',
@@ -32,7 +34,57 @@ export class EmployeeService {
     @InjectModel(Company.name) private companyModel: Model<Company>,
     @InjectModel(Branch.name) private branchModel: Model<Branch>,
     @InjectModel(Department.name) private deptModel: Model<Department>,
+    @InjectModel(Device.name) private deviceModel: Model<Device>,
   ) {}
+
+  async validateDeviceLinks(deviceLinks: any[]): Promise<void> {
+    if (!Array.isArray(deviceLinks)) return;
+    const seenIds = new Set<string>();
+    for (const link of deviceLinks) {
+      if (!link.deviceId) {
+        throw new BadRequestException('Each device link must contain a valid deviceId');
+      }
+      if (seenIds.has(String(link.deviceId))) {
+        throw new BadRequestException('Duplicate device ID in enrollment list');
+      }
+      seenIds.add(String(link.deviceId));
+      if (Types.ObjectId.isValid(link.deviceId)) {
+        const exists = await this.deviceModel.findById(link.deviceId);
+        if (!exists) {
+          throw new BadRequestException(`Device with ID "${link.deviceId}" does not exist`);
+        }
+      }
+      // Schedule time validation (reserved for future requirements):
+      // if (link.startTime && link.endTime && link.startTime >= link.endTime) {
+      //   throw new BadRequestException(`Start time (${link.startTime}) must be before end time (${link.endTime})`);
+      // }
+    }
+  }
+
+  async enrollEmployee(id: string, body: { deviceUserId: string; deviceLinks?: any[] }): Promise<Employee> {
+    const existing = await this.employeeModel.findById(id);
+    if (!existing) throw new BadRequestException('Employee not found');
+
+    const deviceUserId = String(body.deviceUserId || '').trim();
+    if (deviceUserId) {
+      const dup = await this.employeeModel.findOne({
+        deviceUserId,
+        _id: { $ne: existing._id },
+      });
+      if (dup) {
+        throw new BadRequestException(
+          `Device ID "${deviceUserId}" is already assigned to employee "${dup.firstName} ${dup.lastName}".`
+        );
+      }
+    }
+
+    const deviceLinks = body.deviceLinks || [];
+    await this.validateDeviceLinks(deviceLinks);
+
+    existing.deviceUserId = deviceUserId;
+    existing.deviceLinks = deviceLinks;
+    return existing.save();
+  }
 
   // Build a clean, credential-free payload from arbitrary client input.
   private pick(body: any): Partial<Employee> {
@@ -72,6 +124,9 @@ export class EmployeeService {
         throw new BadRequestException(`Device ID "${payload.deviceUserId}" is already assigned to employee "${dup.firstName} ${dup.lastName}".`);
       }
     }
+    if (payload.deviceLinks) {
+      await this.validateDeviceLinks(payload.deviceLinks);
+    }
     const employee = new this.employeeModel(payload);
     return employee.save();
   }
@@ -106,6 +161,9 @@ export class EmployeeService {
       if (dup) {
         throw new BadRequestException(`Device ID "${payload.deviceUserId}" is already assigned to employee "${dup.firstName} ${dup.lastName}".`);
       }
+    }
+    if (payload.deviceLinks) {
+      await this.validateDeviceLinks(payload.deviceLinks);
     }
     existing.set(payload);
     return existing.save();
@@ -144,7 +202,7 @@ export class EmployeeService {
       {
         $project: {
           firstName: 1, lastName: 1, email: 1, mobile: 1, gender: 1,
-          companyId: 1, branchId: 1, deptId: 1, employeeCode: 1, deviceUserId: 1,
+          companyId: 1, branchId: 1, deptId: 1, employeeCode: 1, deviceUserId: 1, deviceLinks: 1,
           active_status: 1, joining_date: 1, date_of_birth: 1,
           department: { _id: 1, name: 1, dept_code: 1, branchId: 1 },
         },
@@ -210,6 +268,13 @@ export class EmployeeService {
           deptIdObj: { $convert: { input: '$deptId', to: 'objectId', onError: null, onNull: null } },
           branchIdObj: { $convert: { input: '$branchId', to: 'objectId', onError: null, onNull: null } },
           companyIdObj: { $convert: { input: '$companyId', to: 'objectId', onError: null, onNull: null } },
+          deviceObjIds: {
+            $map: {
+              input: { $ifNull: ['$deviceLinks', []] },
+              as: 'dl',
+              in: { $convert: { input: '$$dl.deviceId', to: 'objectId', onError: null, onNull: null } },
+            },
+          },
         },
       },
       { $lookup: { from: 'departments', localField: 'deptIdObj', foreignField: '_id', as: 'departmentInfo' } },
@@ -218,10 +283,11 @@ export class EmployeeService {
       { $unwind: { path: '$branchesInfo', preserveNullAndEmptyArrays: true } },
       { $lookup: { from: 'companies', localField: 'companyIdObj', foreignField: '_id', as: 'companiesInfo' } },
       { $unwind: { path: '$companiesInfo', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'devices', localField: 'deviceObjIds', foreignField: '_id', as: 'linkedDevicesInfo' } },
       {
         $project: {
           _id: 1, firstName: 1, lastName: 1, email: 1, mobile: 1, gender: 1,
-          branchId: 1, companyId: 1, employeeCode: 1, deviceUserId: 1,
+          branchId: 1, companyId: 1, employeeCode: 1, deviceUserId: 1, deviceLinks: 1,
           active_status: 1, joining_date: 1, date_of_birth: 1,
           dept_code: '$departmentInfo.dept_code',
           dept_id: '$departmentInfo._id',
@@ -230,6 +296,13 @@ export class EmployeeService {
           branch_name: '$branchesInfo.name',
           company_Id: '$companiesInfo.companyId',
           company_name: '$companiesInfo.name',
+          linkedDevices: {
+            $map: {
+              input: { $ifNull: ['$linkedDevicesInfo', []] },
+              as: 'dev',
+              in: { _id: '$$dev._id', name: '$$dev.name', status: '$$dev.status', serialNumber: '$$dev.serialNumber' },
+            },
+          },
         },
       },
     ];

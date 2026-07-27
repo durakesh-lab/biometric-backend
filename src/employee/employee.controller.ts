@@ -87,6 +87,11 @@ export class EmployeeController {
     return this.employeeService.findById(id);
   }
 
+  @Put(':id/enroll')
+  enroll(@Param('id') id: string, @Body() body: { deviceUserId: string; deviceLinks?: any[] }) {
+    return this.employeeService.enrollEmployee(id, body);
+  }
+
   @Put(':id')
   update(@Param('id') id: string, @Body() body: any) {
     return this.employeeService.updateEmployee(id, body);

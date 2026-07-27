@@ -34,6 +34,12 @@ export class AttendanceService {
         const punchTime = p.punch_time ?? p.punchTime ?? p.timestamp;
         if (!empCode || !punchTime) continue;
 
+        // Terminal SN filter: Skip punches that belong to a different terminal
+        const punchSn = String(p.terminal_sn ?? p.sn ?? p.device_sn ?? p.terminalSn ?? '').trim();
+        if (device.serialNumber && punchSn && punchSn !== String(device.serialNumber).trim()) {
+          continue;
+        }
+
         const employee = await this.employeeModel.findOne({ deviceUserId: empCode });
         if (!employee) continue; // orphan punch — no enrolled employee
 
@@ -45,6 +51,11 @@ export class AttendanceService {
         });
         if (dup) continue;
 
+        // Schedule check (reserved for future requirements):
+        // const isLinked = Array.isArray(employee.deviceLinks) && employee.deviceLinks.length > 0
+        //   ? employee.deviceLinks.some((dl: any) => String(dl.deviceId) === String(device._id))
+        //   : true;
+
         await this.attendanceModel.create({
           employeeId: String(employee._id),
           deviceUserId: empCode,
@@ -53,6 +64,7 @@ export class AttendanceService {
           deviceId: String(device._id),
           companyId: employee.companyId,
           branchId: employee.branchId,
+          // outsideSchedule: !isLinked,
         });
         inserted++;
       }

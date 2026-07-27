@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Permission } from './schemas/permission.schema';
@@ -8,12 +8,46 @@ import { CreateSubPermissionDto } from './dto/create-sub-permission.dto';
 import { RolePermission } from './schemas/role-permission.schema';
 
 @Injectable()
-export class PermissionsService {
+export class PermissionsService implements OnModuleInit {
   constructor(
     @InjectModel(Permission.name) private permissionModel: Model<Permission>,
     @InjectModel(SubPermission.name) private subPermissionModel: Model<SubPermission>,
     @InjectModel(RolePermission.name) private RolePermissionModel: Model<RolePermission>,
   ) {}
+
+  async onModuleInit() {
+    try {
+      // Ensure 'device-assignment' and 'devices' permissions exist in the permissions DB
+      let bioDevPerm = await this.permissionModel.findOne({ title: 'Biometric Device' });
+      if (!bioDevPerm) {
+        bioDevPerm = await this.permissionModel.create({ title: 'Biometric Device' });
+      }
+
+      const existingSub = await this.subPermissionModel.findOne({ title: 'Device Assignment' });
+      if (!existingSub && bioDevPerm) {
+        const sub = await this.subPermissionModel.create({
+          title: 'Device Assignment',
+          parentPermission: bioDevPerm._id,
+        });
+        await this.permissionModel.findByIdAndUpdate(bioDevPerm._id, {
+          $addToSet: { subPermissions: sub._id },
+        });
+      }
+
+      const existingDevSub = await this.subPermissionModel.findOne({ title: 'Devices' });
+      if (!existingDevSub && bioDevPerm) {
+        const sub = await this.subPermissionModel.create({
+          title: 'Devices',
+          parentPermission: bioDevPerm._id,
+        });
+        await this.permissionModel.findByIdAndUpdate(bioDevPerm._id, {
+          $addToSet: { subPermissions: sub._id },
+        });
+      }
+    } catch (e) {
+      // Silently handle if DB is not ready during initialization
+    }
+  }
 
   async createPermission(createPermissionDto: CreatePermissionDto): Promise<Permission> {
     const createdPermission = new this.permissionModel(createPermissionDto);

@@ -6,14 +6,16 @@ import { Document } from 'mongoose';
 export class Device extends Document {
   @Prop({ required: true }) name: string;
 
-  @Prop({ required: true }) serialNumber: string;
+  @Prop({ required: true, unique: true }) serialNumber: string;
 
   // EasyWDMS connection
   @Prop({ required: false }) wdmsBaseUrl: string;   // e.g. http://192.168.0.104:8081
   @Prop({ required: false }) wdmsToken: string;     // API token from /api-token-auth/
 
-  @Prop({ required: true }) companyId: string;
-  @Prop({ required: true }) branchId: string;
+  @Prop({ required: false }) companyId: string;
+  @Prop({ required: false }) branchId: string;
+  @Prop({ required: false }) deptId: string;
+  @Prop({ required: false }) location: string;
 
   @Prop({ enum: ['Online', 'Offline'], default: 'Offline' }) status: string;
 

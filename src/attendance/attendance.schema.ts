@@ -11,6 +11,7 @@ export class Attendance extends Document {
   @Prop({ required: false }) deviceId: string;    // our devices._id (source)
   @Prop({ required: false }) companyId: string;
   @Prop({ required: false }) branchId: string;
+  // @Prop({ required: false, default: false }) outsideSchedule: boolean;
 }
 
 export const AttendanceSchema = SchemaFactory.createForClass(Attendance);

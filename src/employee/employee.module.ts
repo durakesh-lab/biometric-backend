@@ -7,6 +7,8 @@ import { Company, CompanySchema } from 'src/company/company.schema';
 import { Branch, BranchSchema } from 'src/branch/branch.schema';
 import { Department, DepartmentSchema } from 'src/department/department.schema';
 
+import { Device, DeviceSchema } from 'src/device/device.schema';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -14,6 +16,7 @@ import { Department, DepartmentSchema } from 'src/department/department.schema';
       { name: Company.name, schema: CompanySchema },
       { name: Branch.name, schema: BranchSchema },
       { name: Department.name, schema: DepartmentSchema },
+      { name: Device.name, schema: DeviceSchema },
     ]),
   ],
   controllers: [EmployeeController],
