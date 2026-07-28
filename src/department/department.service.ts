@@ -166,8 +166,8 @@ export class DepartmentService {
 
 
     const result = await this.deptModel.findByIdAndDelete(departmentId);
-    if (result) return { message: 'Dept deleted successfully' };
-    return { message: 'Dept not found' };
+    if (result) return { message: 'Department deleted successfully' };
+    return { message: 'Department not found' };
   }
     async deletedepartments(ids: string[]) {
       // Convert and validate all IDs
@@ -183,7 +183,7 @@ export class DepartmentService {
       }
   
       if (invalidIds.length) {
-        throw new BadRequestException(`Invalid branch IDs: ${invalidIds.join(', ')}`);
+        throw new BadRequestException(`Invalid department IDs: ${invalidIds.join(', ')}`);
       }
   
       const result = await this.deptModel.deleteMany({
@@ -191,11 +191,11 @@ export class DepartmentService {
       });
   
       if (result.deletedCount === 0) {
-        return { message: 'No branches found to delete' };
+        return { message: 'No departments found to delete' };
       }
-  
+
       return {
-        message: `Deleted ${result.deletedCount} branches successfully`,
+        message: `Deleted ${result.deletedCount} departments successfully`,
         deletedCount: result.deletedCount
       };
     }
