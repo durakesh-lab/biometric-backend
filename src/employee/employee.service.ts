@@ -100,12 +100,53 @@ export class EmployeeService {
     return out;
   }
 
+  async generateNextDeviceUserId(): Promise<string> {
+    const employees = await this.employeeModel.find({}, { deviceUserId: 1 }).exec();
+    const numericCodes = employees
+      .map((e) => {
+        const val = e.deviceUserId || '';
+        return parseInt(val, 10);
+      })
+      .filter((num) => !isNaN(num));
+
+    const maxCode = numericCodes.length > 0 ? Math.max(...numericCodes) : 100;
+    return (maxCode + 1).toString();
+  }
+
+  async updateStatus(id: string, active_status: string): Promise<Employee> {
+    const existing = await this.employeeModel.findById(id);
+    if (!existing) throw new BadRequestException('Employee not found');
+    existing.active_status = active_status;
+    if (!existing.inactivityPeriods) existing.inactivityPeriods = [];
+
+    if (active_status === 'Inactive') {
+      const openPeriod = existing.inactivityPeriods.find((p: any) => !p.to);
+      if (!openPeriod) {
+        existing.inactivityPeriods.push({ from: new Date(), to: null });
+      }
+      if (!existing.inactivatedAt) existing.inactivatedAt = new Date();
+    } else {
+      const openPeriod = existing.inactivityPeriods.find((p: any) => !p.to);
+      if (openPeriod) {
+        openPeriod.to = new Date();
+      }
+      existing.inactivatedAt = null as any;
+    }
+    return existing.save();
+  }
+
   async createEmployee(body: any): Promise<Employee> {
     const payload = this.pick(body);
     if (!payload.firstName) throw new BadRequestException('First name is required');
     if (!payload.companyId || !payload.branchId) {
       throw new BadRequestException('Company and branch are required');
     }
+
+    // Auto-generate Hardware Device User ID if omitted or empty
+    if (!payload.deviceUserId || String(payload.deviceUserId).trim() === '') {
+      payload.deviceUserId = await this.generateNextDeviceUserId();
+    }
+
     if (payload.email) {
       const dup = await this.employeeModel.findOne({ email: payload.email });
       if (dup) {
@@ -164,6 +205,22 @@ export class EmployeeService {
     }
     if (payload.deviceLinks) {
       await this.validateDeviceLinks(payload.deviceLinks);
+    }
+    const periods = Array.isArray(existing.inactivityPeriods) ? [...existing.inactivityPeriods] : [];
+    if (payload.active_status === 'Inactive') {
+      const openPeriod = periods.find((p: any) => !p.to);
+      if (!openPeriod) {
+        periods.push({ from: new Date(), to: null });
+      }
+      payload.inactivityPeriods = periods;
+      if (!existing.inactivatedAt) payload.inactivatedAt = new Date();
+    } else if (payload.active_status === 'Active') {
+      const openPeriod = periods.find((p: any) => !p.to);
+      if (openPeriod) {
+        openPeriod.to = new Date();
+      }
+      payload.inactivityPeriods = periods;
+      payload.inactivatedAt = null as any;
     }
     existing.set(payload);
     return existing.save();

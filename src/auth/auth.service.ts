@@ -73,11 +73,11 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
     @InjectConnection() private readonly connection: Connection
-  ) {}
+  ) { }
 
   async validateUser(username: string, password: string): Promise<any> {
     const user = await this.userService.findOne(username);
-    if(user?.active_status=="Inactive"){
+    if (user?.active_status == "Inactive") {
       throw new UnauthorizedException('User is inactive');
       // return {
       //   statusCode: 401,
@@ -91,13 +91,21 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const payload = {branchId:user.branchId,companyId:user.companyId, username: user.username,firstName: user.firstName,  sub: user._id, role: user.role };
+    const payload = {
+      branchId: user.branchId,
+      companyId: user.companyId,
+      username: user.username,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      employeeCode: user.employeeCode || '',
+      sub: user._id,
+      role: user.role,
+    };
     return {
-      access_token: this.jwtService.sign(payload, { expiresIn: '3h' }), // longer-lived access token
-      // Refresh token: longer-lived, used only to obtain a new access token.
+      access_token: this.jwtService.sign(payload, { expiresIn: '15m' }), // 15-minute access token
       refresh_token: this.jwtService.sign(
         { sub: user._id, username: user.username, type: 'refresh' },
-        { expiresIn: '7d' },
+        { expiresIn: '7d' }, // 7-day refresh token
       ),
     };
   }
@@ -181,154 +189,154 @@ export class AuthService {
     return this.register(registerDto, true);
   }
 
-async authenticate(loginDto: LoginDto) {
-  const user = await this.validateUser(loginDto.username, loginDto.password);
-  if (!user) {
-    throw new UnauthorizedException('Invalid credentials');
-  }
-
-  const settingsCollection = this.connection.collection('settings');
-  const settings: any = await settingsCollection.findOne({ type: "2factor-authentication" });
-  const userCollection = this.connection.collection('users');
-  const existingUser: any = await userCollection.findOne({ username: loginDto.username });
-
-  const currentTime = new Date().getTime();
-  let verificationCode = '';
-  let shouldSendNewCode = true;
-
-  // Check if existing code is still valid
-  if (
-    existingUser &&
-    existingUser.verificationCode &&
-    existingUser.codeGeneratedAt &&
-    currentTime - new Date(existingUser.codeGeneratedAt).getTime() < 5 * 60 * 1000
-  ) {
-    verificationCode = existingUser.verificationCode;
-    shouldSendNewCode = false;
-  } else {
-    verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  // let w = await this.login(user);
-
-  // Only send email and update DB if new code is needed.
-  // Null-guard: on a fresh DB the settings doc may not exist → treat 2FA as OFF (don't crash).
-  if (settings?.datavalue) {
-    // SMTP credentials are a SINGLE server-side secret (the system sender mailbox),
-    // read from .env — NOT from the DB and NOT entered per-user in the UI.
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
-    if (!smtpUser || !smtpPass) {
-      throw new InternalServerErrorException(
-        '2FA is enabled but SMTP_USER / SMTP_PASS are not configured on the server.',
-      );
+  async authenticate(loginDto: LoginDto) {
+    const user = await this.validateUser(loginDto.username, loginDto.password);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
     }
-    try {
-      // Configure nodemailer (Gmail example) from server env.
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: smtpUser,
-          pass: smtpPass, // Gmail App Password, stored only in .env
-        },
-      });
 
-      const mailOptions = {
-        from: smtpUser,
-        to: existingUser.email, // the OTP goes TO the user logging in
-        subject: 'Your 2FA Verification Code',
-        text: `Your verification code For Biometric Login is ${verificationCode}. It is valid for 5 minutes.`,
-      };
+    const settingsCollection = this.connection.collection('settings');
+    const settings: any = await settingsCollection.findOne({ type: "2factor-authentication" });
+    const userCollection = this.connection.collection('users');
+    const existingUser: any = await userCollection.findOne({ username: loginDto.username });
 
-      // Send email first
-      await transporter.sendMail(mailOptions);
+    const currentTime = new Date().getTime();
+    let verificationCode = '';
+    let shouldSendNewCode = true;
 
-      // Only update DB if email was sent successfully
-      await userCollection.updateOne(
-        { username: loginDto.username },
-        {
-          $set: {
-            verificationCode,
-            codeGeneratedAt: new Date(),
-            codeAttempts: 0, // reset the brute-force counter for the new code
+    // Check if existing code is still valid
+    if (
+      existingUser &&
+      existingUser.verificationCode &&
+      existingUser.codeGeneratedAt &&
+      currentTime - new Date(existingUser.codeGeneratedAt).getTime() < 5 * 60 * 1000
+    ) {
+      verificationCode = existingUser.verificationCode;
+      shouldSendNewCode = false;
+    } else {
+      verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    // let w = await this.login(user);
+
+    // Only send email and update DB if new code is needed.
+    // Null-guard: on a fresh DB the settings doc may not exist → treat 2FA as OFF (don't crash).
+    if (settings?.datavalue) {
+      // SMTP credentials are a SINGLE server-side secret (the system sender mailbox),
+      // read from .env — NOT from the DB and NOT entered per-user in the UI.
+      const smtpUser = process.env.SMTP_USER;
+      const smtpPass = process.env.SMTP_PASS;
+      if (!smtpUser || !smtpPass) {
+        throw new InternalServerErrorException(
+          '2FA is enabled but SMTP_USER / SMTP_PASS are not configured on the server.',
+        );
+      }
+      try {
+        // Configure nodemailer (Gmail example) from server env.
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: smtpUser,
+            pass: smtpPass, // Gmail App Password, stored only in .env
           },
-        },
-        { upsert: true }
-      );
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to send verification email');
+        });
+
+        const mailOptions = {
+          from: smtpUser,
+          to: existingUser.email, // the OTP goes TO the user logging in
+          subject: 'Your 2FA Verification Code',
+          text: `Your verification code For Biometric Login is ${verificationCode}. It is valid for 5 minutes.`,
+        };
+
+        // Send email first
+        await transporter.sendMail(mailOptions);
+
+        // Only update DB if email was sent successfully
+        await userCollection.updateOne(
+          { username: loginDto.username },
+          {
+            $set: {
+              verificationCode,
+              codeGeneratedAt: new Date(),
+              codeAttempts: 0, // reset the brute-force counter for the new code
+            },
+          },
+          { upsert: true }
+        );
+      } catch (error) {
+        throw new InternalServerErrorException('Failed to send verification email');
+      }
     }
-  }
-  else{
-     var w = await this.login(user);
-       return {
+    else {
+      var w = await this.login(user);
+      return {
         ...w,
-    multifactorauth: settings?.datavalue || false,
-    message: shouldSendNewCode 
-      ? 'Verification code sent to your email.' 
-      : 'Existing verification code still valid.',
-  };
+        multifactorauth: settings?.datavalue || false,
+        message: shouldSendNewCode
+          ? 'Verification code sent to your email.'
+          : 'Existing verification code still valid.',
+      };
+    }
+
+    return {
+      multifactorauth: settings?.datavalue || false,
+      message: shouldSendNewCode
+        ? 'Verification code sent to your email.'
+        : 'Existing verification code still valid.',
+    };
   }
 
-  return {
-    multifactorauth: settings?.datavalue || false,
-    message: shouldSendNewCode 
-      ? 'Verification code sent to your email.' 
-      : 'Existing verification code still valid.',
-  };
-}
 
+  async verifycode(body: any) {
+    const usercheck = await this.validateUser(body.username, body.password);
+    if (!usercheck) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-async verifycode(body: any) {
-  const usercheck = await this.validateUser(body.username, body.password);
-  if (!usercheck) {
-    throw new UnauthorizedException('Invalid credentials');
-  }
+    const userCollection = this.connection.collection('users');
+    const user: any = await userCollection.findOne({ username: usercheck.username });
 
-  const userCollection = this.connection.collection('users');
-  const user: any = await userCollection.findOne({ username: usercheck.username });
+    // No code generated → nothing to verify.
+    if (!user?.verificationCode || !user?.codeGeneratedAt) {
+      throw new UnauthorizedException('No active verification code. Please log in again.');
+    }
 
-  // No code generated → nothing to verify.
-  if (!user?.verificationCode || !user?.codeGeneratedAt) {
-    throw new UnauthorizedException('No active verification code. Please log in again.');
-  }
+    // 1) Expiry: code is only valid for 5 minutes.
+    const ageMs = Date.now() - new Date(user.codeGeneratedAt).getTime();
+    if (ageMs > 5 * 60 * 1000) {
+      await userCollection.updateOne(
+        { username: usercheck.username },
+        { $unset: { verificationCode: '', codeGeneratedAt: '', codeAttempts: '' } },
+      );
+      throw new UnauthorizedException('Verification code expired. Please log in again.');
+    }
 
-  // 1) Expiry: code is only valid for 5 minutes.
-  const ageMs = Date.now() - new Date(user.codeGeneratedAt).getTime();
-  if (ageMs > 5 * 60 * 1000) {
+    // 2) Brute-force cap: max 5 attempts, then invalidate the code.
+    const attempts = (user.codeAttempts || 0) + 1;
+    if (attempts > 5) {
+      await userCollection.updateOne(
+        { username: usercheck.username },
+        { $unset: { verificationCode: '', codeGeneratedAt: '', codeAttempts: '' } },
+      );
+      throw new UnauthorizedException('Too many attempts. Please log in again to get a new code.');
+    }
+
+    // 3) Wrong code → record the attempt, reject.
+    if (String(user.verificationCode) !== String(body.code)) {
+      await userCollection.updateOne(
+        { username: usercheck.username },
+        { $set: { codeAttempts: attempts } },
+      );
+      return { status: false, message: 'invalid code' };
+    }
+
+    // 4) Correct → clear the code so it can't be reused, then issue the token.
     await userCollection.updateOne(
       { username: usercheck.username },
       { $unset: { verificationCode: '', codeGeneratedAt: '', codeAttempts: '' } },
     );
-    throw new UnauthorizedException('Verification code expired. Please log in again.');
+    const w = await this.login(usercheck);
+    return { status: true, message: 'Code Verified Successfully', data: usercheck, ...w };
   }
-
-  // 2) Brute-force cap: max 5 attempts, then invalidate the code.
-  const attempts = (user.codeAttempts || 0) + 1;
-  if (attempts > 5) {
-    await userCollection.updateOne(
-      { username: usercheck.username },
-      { $unset: { verificationCode: '', codeGeneratedAt: '', codeAttempts: '' } },
-    );
-    throw new UnauthorizedException('Too many attempts. Please log in again to get a new code.');
-  }
-
-  // 3) Wrong code → record the attempt, reject.
-  if (String(user.verificationCode) !== String(body.code)) {
-    await userCollection.updateOne(
-      { username: usercheck.username },
-      { $set: { codeAttempts: attempts } },
-    );
-    return { status: false, message: 'invalid code' };
-  }
-
-  // 4) Correct → clear the code so it can't be reused, then issue the token.
-  await userCollection.updateOne(
-    { username: usercheck.username },
-    { $unset: { verificationCode: '', codeGeneratedAt: '', codeAttempts: '' } },
-  );
-  const w = await this.login(usercheck);
-  return { status: true, message: 'Code Verified Successfully', data: usercheck, ...w };
-}
 
 }

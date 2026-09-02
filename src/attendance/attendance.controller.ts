@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Put, Body, Query, Param, UseGuards, Req } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -25,9 +25,9 @@ export class AttendanceController {
     return this.attendanceService.stats(body?.branchId, body?.companyId, query);
   }
 
-  // Demo: inject a punch for an enrolled employee (no hardware needed).
-  // @Post('test-punch')
-  // testPunch(@Body() body: any) {
-  //   return this.attendanceService.addTestPunch(body);
-  // }
+  // Manual HR Edit / Correction endpoint.
+  @Put(':id')
+  updatePunch(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    return this.attendanceService.updatePunch(id, body, req?.user);
+  }
 }

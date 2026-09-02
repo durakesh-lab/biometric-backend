@@ -5,6 +5,7 @@ import { AttendanceService } from './attendance.service';
 import { Attendance, AttendanceSchema } from './attendance.schema';
 import { Employee, EmployeeSchema } from '../employee/employee.schema';
 import { Device, DeviceSchema } from '../device/device.schema';
+import { AuditLogModule } from '../auditlog/auditlog.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { Device, DeviceSchema } from '../device/device.schema';
       { name: Employee.name, schema: EmployeeSchema },
       { name: Device.name, schema: DeviceSchema },
     ]),
+    AuditLogModule,
   ],
   controllers: [AttendanceController],
   providers: [AttendanceService],

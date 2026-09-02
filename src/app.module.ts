@@ -15,6 +15,7 @@ import { PermissionsModule } from './permission/permission.module';
 import { SettingModule } from './settings/setting.module';
 import { ConfigModule } from '@nestjs/config';
 import { LeaveModule } from './leaves/leaves.module';
+import { AuditLogModule } from './auditlog/auditlog.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
@@ -40,7 +41,8 @@ import { APP_GUARD } from '@nestjs/core';
     DashboardModule,
     PermissionsModule,
     SettingModule,
-    LeaveModule
+    LeaveModule,
+    AuditLogModule,
   ],
   providers: [
     // Apply the rate limiter globally.

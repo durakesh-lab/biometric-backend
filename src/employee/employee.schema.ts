@@ -45,6 +45,11 @@ export class Employee extends Document {
 
   @Prop({ enum: ['Active', 'Inactive'], default: 'Active' }) active_status: string;
 
+  @Prop({ required: false, default: null }) inactivatedAt: Date;
+
+  @Prop({ type: [{ from: Date, to: Date }], default: [] })
+  inactivityPeriods: { from: Date; to: Date | null }[];
+
   @Prop({ required: false }) joining_date: string;
 
   @Prop({ required: false }) date_of_birth: string;

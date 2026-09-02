@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Put,
+  Patch,
   Get,
   Delete,
   Body,
@@ -21,6 +22,17 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @Controller('employees')
 export class EmployeeController {
   constructor(private readonly employeeService: EmployeeService) {}
+
+  @Get('next-device-user-id')
+  async getNextDeviceUserId() {
+    const nextDeviceUserId = await this.employeeService.generateNextDeviceUserId();
+    return { nextDeviceUserId };
+  }
+
+  @Patch(':id/status')
+  async updateStatus(@Param('id') id: string, @Body('active_status') status: string) {
+    return await this.employeeService.updateStatus(id, status);
+  }
 
   // Create an employee (attendance record — no credentials are created).
   @Post()
