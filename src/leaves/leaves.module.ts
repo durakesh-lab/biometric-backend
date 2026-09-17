@@ -14,7 +14,7 @@ import { Company, CompanySchema } from 'src/company/company.schema';
 import { Branch, BranchSchema } from 'src/branch/branch.schema';
 import { BranchModule } from 'src/branch/branch.module';
 import { CompanyModule } from 'src/company/company.module';
-import { Group, GroupSchema } from 'src/groups/groups.schema';
+import { Group, GroupSchema } from 'src/shiftsandgroups/groups.schema';
 import { HolidayController } from './holiday.controller';
 import { HolidayService } from './holiday.service';
 import { Holiday, HolidaySchema } from './holiday.schema';

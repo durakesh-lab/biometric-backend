@@ -168,7 +168,7 @@ import * as bcrypt from 'bcrypt';
 import { Company } from 'src/company/company.schema';
 import { Branch } from 'src/branch/branch.schema';
 import { Department } from 'src/department/department.schema';
-import { Group } from 'src/groups/groups.schema';
+import { Group } from 'src/shiftsandgroups/groups.schema';
 import * as moment from 'moment';
 
 @Injectable()
@@ -731,10 +731,10 @@ async getAllGroupsWithUserCount(branchId: string, companyId: string): Promise<an
   ).map(g => ({
     groupId: g._id,
     groupName: g.name,
-    groupColor: g.color,
-    startTime: g.startTime,
-    endTime: g.endTime,
-    description: g.description,
+    groupColor: (g as any).color || '',
+    startTime: (g as any).startTime || '',
+    endTime: (g as any).endTime || '',
+    description: (g as any).description || '',
     userCount: 0
   }));
 

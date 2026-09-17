@@ -9,7 +9,7 @@ import { CompanyModule } from './company/company.module';
 import { MicroserviceModule } from './microservice/microservice.module';
 import { BranchModule } from './branch/branch.module';
 import { DepartmentModule } from './department/department.module';
-import { GroupModule } from './groups/group.module';
+import { GroupModule } from './shiftsandgroups/group.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { PermissionsModule } from './permission/permission.module';
 import { SettingModule } from './settings/setting.module';

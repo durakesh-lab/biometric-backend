@@ -9,8 +9,8 @@ import { BranchModule } from 'src/branch/branch.module';
 import { CompanyModule } from 'src/company/company.module';
 import { Department, DepartmentSchema } from 'src/department/department.schema';
 import { DepartmentModule } from 'src/department/department.module';
-import { Group, GroupSchema } from 'src/groups/groups.schema';
-import { GroupModule } from 'src/groups/group.module';
+import { Group, GroupSchema } from 'src/shiftsandgroups/groups.schema';
+import { GroupModule } from 'src/shiftsandgroups/group.module';
 
 @Module({
   imports: [

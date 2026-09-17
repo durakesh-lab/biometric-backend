@@ -6,7 +6,7 @@ import { LeaveRequest } from './leaves-request.schema';
 import { Branch } from 'src/branch/branch.schema';
 import { UserDocument } from 'src/user/user.schema';
 import { Company } from 'src/company/company.schema';
-import { Group } from 'src/groups/groups.schema';
+import { Group } from 'src/shiftsandgroups/groups.schema';
 
 @Injectable()
 export class LeavesService {
@@ -450,10 +450,10 @@ async getAllLeaves(
   }
 
   return {
-    shift: group.shifts,
+    shift: (group as any).shifts || [],
     shiftTimeWindow: {
-      groupStartTime: group.startTime,
-      groupEndTime: group.endTime,
+      groupStartTime: (group as any).startTime || '',
+      groupEndTime: (group as any).endTime || '',
     },
     groupName: group.name,
   };
